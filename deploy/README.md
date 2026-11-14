@@ -33,6 +33,8 @@ The app runs its migrations itself on the first query, and `/api/health` shows `
 
 The `runner` service (code sandbox, see `runner/README.md`) mounts `/var/run/docker.sock` and pulls `python:3.12-slim` and `node:22-slim` on its first start.
 
-Coming next: the `tts` (Kokoro-82M) service and a deploy workflow (build → GHCR → SSH → `docker compose pull && up -d`).
+The `tts` service (`tts/`, Kokoro-82M via kokoro-onnx, ≈ 840 MB image with the int8 model baked in) serves `/api/flicky/speak`. It needs no keys and sits on the internal network.
+
+Coming next: a deploy workflow (build → GHCR → SSH → `docker compose pull && up -d`).
 
 Checked locally: stack up in under a minute; pages, static files, `/api/tasks`, the demo mentor, a 5 MB upload and the Flicky SSE stream (chunks arrive every ~40 ms) all work through Caddy.

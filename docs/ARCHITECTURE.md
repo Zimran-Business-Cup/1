@@ -201,8 +201,10 @@ Anchor ids are lowercase dotted paths without colons: `code.run`, `code.submit`,
 ## 9. Voice
 
 - Speech to text: **Groq Whisper** (`whisper-large-v3-turbo`), free tier: 20 requests/min, 2,000/day, 8 h of audio/day, each request billed as at least 10 s. Key only on the server.
-- Text to speech: **Kokoro-82M** (Apache 2.0) in its own container on CPU. If one sentence takes longer than ~2 s on the VPS, switch `/api/flicky/speak` to OpenAI TTS (~$15 per 1M characters).
+- Text to speech: **Kokoro-82M** (Apache 2.0) in its own container on CPU (`tts/`, kokoro-onnx with the 88 MB int8 model, voice `af_heart` by default). Measured locally through Caddy: 0.4 s for a short phrase, 0.6 s for two sentences, 1.6 s for 178 characters (10.6 s of speech). If one sentence takes longer than ~2 s on the VPS, switch `/api/flicky/speak` to OpenAI TTS (~$15 per 1M characters).
 - Fallback for both: browser Web Speech (`speechSynthesis`), so the assistant never goes silent.
+
+**Status (server side ✓).** `/api/flicky/ask` streams the model's answer (`claude-opus-5-5`, effort low, prompt caching on the Flicky system prompt, server-side refusal fallback) with the workspace image, the anchors and the task in the user turn; `done` carries the parsed walkthrough with unknown anchors dropped. `/transcribe` calls Groq Whisper with a vocabulary hint, `/speak` calls the `tts` container. Each route says which mode answered in `X-Flicky-Mode: ai | demo`: without `ANTHROPIC_API_KEY` / `GROQ_API_KEY` they answer with the recorded stub and a fixed question, without `TTS_URL` speak returns 503 with `X-Fallback: browser`.
 
 ## 10. Code sandbox
 

@@ -21,7 +21,7 @@ Whole picture: [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md).
 5. ✓ **Postgres.** Anonymous id cookie, migrations, `users`, `profiles`, `attempts`, `events`; best-effort writes. Still to add: `tasks` and `run_queue` with the runner, sessions on the server once the UI moves off localStorage.
 6. ✓ **Runner.** Hidden tests on Submit in one-off sandbox containers; the double-pay solution passes all four checks, the starter fails two. Still to add: self-check of model-generated variants before handing them out.
 7. **Grading.** Code checks for scenes (fill type, radius, contrast) and boards (capacity, P0s in sprint, dependencies); model explanation and rubric checks for the report.
-8. **Flicky server (sync 08:30).** Port `prompts.ts` + the model call from Flicky to `src/server/flicky`, add anchors and task context to the prompt, stream SSE, parse with `parseFlickyAnswer` and drop unknown anchors. Groq Whisper for `/transcribe` (free tier), Kokoro container for `/speak`; measure Kokoro latency on the VPS, switch to OpenAI TTS if a sentence takes > 2 s.
+8. ✓ **Flicky server.** Flicky prompt ported, `/ask` streams the model with image + anchors + task, Groq Whisper for `/transcribe`, Kokoro container for `/speak` (0.4–1.6 s locally). Still to do: check with real keys, and measure Kokoro on the VPS.
 9. **Hardening.** Rate limits per anonymous id, nightly `pg_dump`, README credits for Flicky.
 
 ## Rules
