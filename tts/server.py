@@ -1,4 +1,4 @@
-"""heforage tts: Kokoro-82M (Apache 2.0) text-to-speech for Flicky's voice.
+"""1ry-space tts: Kokoro-82M (Apache 2.0) text-to-speech for Flicky's voice.
 
 Internal service, only the app reaches it:
   POST /speak  {"text": "...", "voice": "af_heart"}  -> audio/wav (16-bit mono)

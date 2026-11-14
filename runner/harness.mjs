@@ -1,7 +1,7 @@
 // Programs run inside the sandbox. Each runs every test against a fresh copy of
 // the learner's code and prints RESULT_MARK followed by a JSON result.
 
-export const RESULT_MARK = "__HF_RESULT__";
+export const RESULT_MARK = "__RUNNER_RESULT__";
 
 const b64 = (payload) => Buffer.from(JSON.stringify(payload)).toString("base64");
 

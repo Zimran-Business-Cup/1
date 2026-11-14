@@ -1,6 +1,6 @@
-# heforage
+# 1ry-space
 
-Try a new career before you commit. heforage lets US adults who are thinking about a career switch (say, an accountant curious about tech) open a session for a role, read what the job involves and what it pays, take a one-minute level quiz, and do the real tasks a junior does in week one with an AI mentor. At the end the mentor gives an honest fit verdict, and the learner can compare roles in parallel sessions.
+Try a new career before you commit. 1ry-space lets US adults who are thinking about a career switch (say, an accountant curious about tech) open a session for a role, read what the job involves and what it pays, take a one-minute level quiz, and do the real tasks a junior does in week one with an AI mentor. At the end the mentor gives an honest fit verdict, and the learner can compare roles in parallel sessions.
 
 ## What works
 

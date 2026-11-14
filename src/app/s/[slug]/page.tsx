@@ -14,7 +14,7 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: PageProps<"/s/[slug]">): Promise<Metadata> {
   const { slug } = await params;
   const p = getProfession(slug);
-  return { title: p ? `${p.name}: test-drive the role | heforage` : "heforage" };
+  return { title: p ? `${p.name}: test-drive the role | 1ry-space` : "1ry-space" };
 }
 
 export default async function SessionPage({ params }: PageProps<"/s/[slug]">) {

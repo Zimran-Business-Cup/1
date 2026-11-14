@@ -15,7 +15,7 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "heforage: try a new career before you commit",
+  title: "1ry-space: try a new career before you commit",
   description:
     "Pick a role, see what it pays, and do the real tasks a junior does in week one, with an AI mentor beside you.",
 };

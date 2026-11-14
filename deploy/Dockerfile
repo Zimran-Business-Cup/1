@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
-# heforage app: Next.js in standalone mode. Build from the repo root:
-#   docker build -f deploy/Dockerfile -t heforage-app .
+# 1ry-space app: Next.js in standalone mode. Build from the repo root:
+#   docker build -f deploy/Dockerfile -t 1ry-space-app .
 
 FROM node:22-slim AS deps
 WORKDIR /app
