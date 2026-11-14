@@ -17,7 +17,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<"/api/tasks/[
   if (!body.ok) return body.response;
   if (body.data.taskId !== id) return errorJson(400, "taskId in the body doesn't match the URL.");
 
-  const result = gradeSubmission(task, body.data);
+  const result = await gradeSubmission(task, body.data);
   if ("error" in result) return errorJson(400, result.error);
   await saveAttempt(await userId(), task, body.data, result);
   return NextResponse.json(result);
