@@ -1,6 +1,6 @@
 import { passedGrade } from "@/contracts/fixtures/tasks";
 import type { Check, GradeResult, PublicTask, Submission } from "@/contracts/task";
-import { starterFiles } from "@/server/tasks/store";
+import { getPublicTask, starterFiles } from "@/server/tasks/store";
 import { checkBoard, checkDesign, type BoardRules, type DesignRules } from "./rules";
 
 // Submission → GradeResult. `passed` comes only from code checks.
@@ -38,7 +38,9 @@ export function gradeSubmission(task: PublicTask, submission: Submission): Grade
         next: null,
       };
     }
-    return { ...passedGrade, taskId: id, explanation: `${passedGrade.explanation} (Stub grade: hidden tests run once the sandbox is up.)` };
+    // Only offer a next task the store can actually serve.
+    const next = passedGrade.next && getPublicTask(passedGrade.next.id) ? passedGrade.next : null;
+    return { ...passedGrade, taskId: id, next, explanation: `${passedGrade.explanation} (Stub grade: hidden tests run once the sandbox is up.)` };
   }
 
   if (task.card.workspace === "design") {
