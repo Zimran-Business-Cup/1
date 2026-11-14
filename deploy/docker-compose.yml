@@ -37,6 +37,7 @@ services:
     environment:
       DATABASE_URL: postgres://heforage:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}@postgres:5432/heforage
       RUNNER_URL: http://runner:8080
+      TTS_URL: http://tts:8880
     depends_on:
       postgres:
         condition: service_healthy
@@ -72,7 +73,13 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     networks: [internal]
 
-  # Planned: tts (Kokoro-82M), see deploy/README.md.
+  # Flicky's voice: Kokoro-82M on CPU. No keys, no internet, no published ports.
+  tts:
+    build:
+      context: ../tts
+    image: ${TTS_IMAGE:-heforage-tts:local}
+    restart: unless-stopped
+    networks: [internal]
 
 networks:
   default: {}
