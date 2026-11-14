@@ -116,7 +116,7 @@ All shapes live in `src/contracts` as zod schemas with inferred types. Fixtures 
 
 | Endpoint | Request → response | Called by | Status |
 |---|---|---|---|
-| `POST /api/tutor` | chat history → `TutorTurn` | chat | exists; will gain `stage: "interview"` and `task: TaskCard` |
+| `POST /api/tutor` | chat history → `TutorTurn` | chat | ✓ interview + task card for the MVP roles |
 | `GET /api/tasks/:id` | → `PublicTask` | workspace on Open | stub ✓ |
 | `POST /api/tasks/:id/submit` | `Submission` → `GradeResult` | Submit button | stub ✓ |
 | `POST /api/flicky/transcribe` | multipart `audio` → `TranscribeResponse` | Flicky bridge | stub ✓ |
@@ -139,7 +139,7 @@ Task privacy: `PublicTask` carries the ticket, starter files and visible tests. 
 
 ## 7. Key flows
 
-**Interview → task card.** `/api/tutor` runs the interview, the model returns a structured profile (level, language, hours, goal). The server picks a seed task for the role, asks the model to personalise the story and edge case, self-checks it in the runner, stores it and returns a `TaskCard` in the turn.
+**Interview → task card.** For the MVP roles `/api/tutor` runs a four-question interview in stage `intro` (job and experience, tools, hours a week, goal; no quiz). The turn that ends it carries `profile`; the server then attaches `task` (a `TaskCard`, picked by `seedTaskFor(role)` — the model never invents task ids) and sets stage `tasks`. The same turn also carries `exercise` built from that task, so the inline task UI keeps working until the full-screen workspace replaces it; later turns in MVP roles have `exercise: null`. Other roles keep the old quiz flow with `task: null`. Next: personalise the seed task with the model and self-check it in the runner before handing it out.
 
 **Run vs Submit.** Run stays in the browser Web Worker with visible tests (instant, no server load). Submit goes to the server: hidden tests in the runner for code, rule checks on the scene JSON for design and on the board JSON for management. `passed` comes only from code checks. The model then writes `explanation` from the check log, and for written parts (status report) adds rubric checks marked `by: "model"`.
 
