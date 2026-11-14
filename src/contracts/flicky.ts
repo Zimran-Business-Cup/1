@@ -84,8 +84,20 @@ export type AskEvent = z.infer<typeof AskEventSchema>;
 // [POINT:412,238:this corner:screen0]             pixel target in snapshot coordinates
 const POINT_TAG = /\[POINT:(?:#([a-z0-9][a-z0-9.-]*):([^\]]+)|(\d+),(\d+):([^:\]]+)(?::screen(\d+))?)\]/g;
 const TYPE_TAG = /\[TYPE:((?:[^\]\\]|\\.)+)\]/g;
-/** Strips POINT and TYPE tags from text before it is shown or spoken. */
+/** Matches POINT and TYPE tags, complete ones only. */
 export const TAG_STRIP = /\[(?:POINT|TYPE):(?:[^\]\\]|\\.)*\]/g;
+
+/** Removes tags and the punctuation they leave behind ("first — [POINT…] — then", "branch — [POINT…]."). */
+export function stripTags(text: string): string {
+  return text
+    .replace(TAG_STRIP, "")
+    .replace(/[ \t]+([—–])(?:[ \t]*[—–])+/g, " $1")
+    .replace(/[ \t]*[—–][ \t]*(?=[.,;:!?]|$)/gm, "")
+    .replace(/[ \t]+([.,;:!?])/g, "$1")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/[ \t]+$/gm, "")
+    .trim();
+}
 
 export interface ParsedAnswer {
   text: string;
@@ -116,7 +128,7 @@ export function parseFlickyAnswer(raw: string, knownAnchors?: ReadonlySet<string
 
   const total = targets.length;
   return {
-    text: raw.replace(TAG_STRIP, "").replace(/[ \t]{2,}/g, " ").trim(),
+    text: stripTags(raw),
     walkthrough: total ? { steps: targets.map((t, i) => ({ step: i + 1, total, ...t })) } : null,
     typeRequests,
   };
