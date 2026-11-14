@@ -1,6 +1,6 @@
 # Architecture
 
-heforage lets someone who is thinking about a career switch try the work of a junior in three roles: backend engineer, product designer and project manager. A mentor interviews the learner, hands out a task, and checks the result. Pass/fail is always decided by code; the language model explains results and gives hints. Flicky, a voice assistant ported from [pango07/flicky](https://github.com/pango07/flicky), points at the interface when the learner is stuck.
+1ry-space lets someone who is thinking about a career switch try the work of a junior in three roles: backend engineer, product designer and project manager. A mentor interviews the learner, hands out a task, and checks the result. Pass/fail is always decided by code; the language model explains results and gives hints. Flicky, a voice assistant ported from [pango07/flicky](https://github.com/pango07/flicky), points at the interface when the learner is stuck.
 
 ## Services
 
@@ -81,7 +81,7 @@ Anchor ids are dotted paths without colons (`code.run`, `code.lines.13-15`, `des
 
 ## Data
 
-Learners are anonymous: the first API call sets an httpOnly cookie `hf_uid` with a random UUID. Migrations live in `src/server/db/migrations.ts` and run on the first query under an advisory lock.
+Learners are anonymous: the first API call sets an httpOnly cookie `uid` with a random UUID. Migrations live in `src/server/db/migrations.ts` and run on the first query under an advisory lock.
 
 | Table | Written by |
 |---|---|

@@ -30,7 +30,7 @@ interface Store {
   plan: "free" | "pro";
 }
 
-const KEY = "heforage:v1";
+const KEY = "1ry-space:v1";
 const EMPTY: Store = { sessions: {}, plan: "free" };
 
 function read(): Store {
@@ -48,7 +48,7 @@ function write(store: Store) {
   } catch {
     // Private mode or full storage: the session still works until reload.
   }
-  window.dispatchEvent(new Event("heforage:store"));
+  window.dispatchEvent(new Event("1ry-space:store"));
 }
 
 export const newId = () => Math.random().toString(36).slice(2, 10);
@@ -91,10 +91,10 @@ export function setPlan(plan: Store["plan"]) {
 /** Re-render on any store change, in this tab or another. */
 export function subscribe(callback: () => void) {
   const onStorage = (e: StorageEvent) => e.key === KEY && callback();
-  window.addEventListener("heforage:store", callback);
+  window.addEventListener("1ry-space:store", callback);
   window.addEventListener("storage", onStorage);
   return () => {
-    window.removeEventListener("heforage:store", callback);
+    window.removeEventListener("1ry-space:store", callback);
     window.removeEventListener("storage", onStorage);
   };
 }

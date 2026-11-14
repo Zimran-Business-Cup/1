@@ -6,13 +6,13 @@ import { MIGRATIONS } from "./migrations";
 type Sql = postgres.Sql;
 
 // One pool per process, kept on globalThis so dev hot reloads don't open new ones.
-const globals = globalThis as typeof globalThis & { __heforageSql?: Sql; __heforageMigrated?: Promise<void> };
+const globals = globalThis as typeof globalThis & { __sql?: Sql; __sqlMigrated?: Promise<void> };
 
 function pool(): Sql | null {
   const url = process.env.DATABASE_URL;
   if (!url) return null;
-  globals.__heforageSql ??= postgres(url, { max: 5, idle_timeout: 30, connect_timeout: 5, onnotice: () => {} });
-  return globals.__heforageSql;
+  globals.__sql ??= postgres(url, { max: 5, idle_timeout: 30, connect_timeout: 5, onnotice: () => {} });
+  return globals.__sql;
 }
 
 async function migrate(sql: Sql) {
@@ -35,11 +35,11 @@ async function migrate(sql: Sql) {
 export async function db(): Promise<Sql | null> {
   const sql = pool();
   if (!sql) return null;
-  globals.__heforageMigrated ??= migrate(sql).catch((error) => {
-    globals.__heforageMigrated = undefined; // retry on the next call
+  globals.__sqlMigrated ??= migrate(sql).catch((error) => {
+    globals.__sqlMigrated = undefined; // retry on the next call
     throw error;
   });
-  await globals.__heforageMigrated;
+  await globals.__sqlMigrated;
   return sql;
 }
 

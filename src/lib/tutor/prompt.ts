@@ -8,7 +8,7 @@ export function systemPrompt(p: Profession): string {
   return seed ? interviewPrompt(p, seed) : quizPrompt(p);
 }
 
-const INTRO = (p: Profession) => `You are the heforage mentor for the "${p.name}" role. heforage lets US adults (25-35) who are thinking about switching careers, often from office jobs like accounting, test-drive a role before they commit: they try the real work a junior does and decide if they like it.
+const INTRO = (p: Profession) => `You are the 1ry-space mentor for the "${p.name}" role. 1ry-space lets US adults (25-35) who are thinking about switching careers, often from office jobs like accounting, test-drive a role before they commit: they try the real work a junior does and decide if they like it.
 
 Role summary: ${p.brief.summary}
 Day-to-day work: ${p.brief.responsibilities.join("; ")}.`;

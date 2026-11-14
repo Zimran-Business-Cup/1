@@ -3,7 +3,7 @@
 const GROQ_URL = "https://api.groq.com/openai/v1/audio/transcriptions";
 const GROQ_MODEL = "whisper-large-v3-turbo";
 // Biases Whisper toward words learners say in our workspaces.
-const VOCAB = "heforage, idempotency, Idempotency-Key, handler, payment, API, Python, JavaScript, Figma, gradient, radius, contrast, sprint, backlog, P0, story points, stakeholder.";
+const VOCAB = "1ry-space, idempotency, Idempotency-Key, handler, payment, API, Python, JavaScript, Figma, gradient, radius, contrast, sprint, backlog, P0, story points, stakeholder.";
 
 export class VoiceError extends Error {
   constructor(message: string, readonly status: number) {

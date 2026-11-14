@@ -1,6 +1,6 @@
 # See deploy/README.md. Only Caddy publishes ports; postgres, runner and tts
 # are on an internal network without internet access.
-name: heforage
+name: 1ry-space
 
 services:
   caddy:
@@ -26,13 +26,13 @@ services:
     build:
       context: ..
       dockerfile: deploy/Dockerfile
-    image: ${APP_IMAGE:-heforage-app:local}
+    image: ${APP_IMAGE:-1ry-space-app:local}
     restart: unless-stopped
     env_file:
       - path: .env
         required: false
     environment:
-      DATABASE_URL: postgres://heforage:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}@postgres:5432/heforage
+      DATABASE_URL: postgres://1ry-space:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}@postgres:5432/1ry-space
       RUNNER_URL: http://runner:8080
       TTS_URL: http://tts:8880
     depends_on:
@@ -46,13 +46,13 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: heforage
+      POSTGRES_USER: 1ry-space
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}
-      POSTGRES_DB: heforage
+      POSTGRES_DB: 1ry-space
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U heforage -d heforage"]
+      test: ["CMD-SHELL", "pg_isready -U 1ry-space -d 1ry-space"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -62,7 +62,7 @@ services:
   runner:
     build:
       context: ../runner
-    image: ${RUNNER_IMAGE:-heforage-runner:local}
+    image: ${RUNNER_IMAGE:-1ry-space-runner:local}
     restart: unless-stopped
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -71,7 +71,7 @@ services:
   tts:
     build:
       context: ../tts
-    image: ${TTS_IMAGE:-heforage-tts:local}
+    image: ${TTS_IMAGE:-1ry-space-tts:local}
     restart: unless-stopped
     networks: [internal]
 

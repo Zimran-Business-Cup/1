@@ -33,7 +33,7 @@ function submissionText(ex: Exercise, payload: { code?: string; result?: RunResu
   return `[Submission] result: ${passed ? "passed" : "failed"}${error ? `\nerror: ${error}` : ""}\n\`\`\`${ex.kind}\n${payload.code}\n\`\`\``;
 }
 
-const SIDEBAR_KEY = "heforage:sidebar";
+const SIDEBAR_KEY = "1ry-space:sidebar";
 const isDesktop = () => window.matchMedia("(min-width: 1024px)").matches;
 
 function saveSidebarPref(open: boolean) {

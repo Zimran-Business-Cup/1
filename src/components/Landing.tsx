@@ -107,7 +107,7 @@ export function Landing() {
             </p>
           </div>
           <div className="rounded-[2rem] bg-paper p-8">
-            <p className="text-lg font-semibold">heforage Pro</p>
+            <p className="text-lg font-semibold">1ry-space Pro</p>
             <p className="mt-3 flex items-baseline gap-2">
               <span className="text-6xl font-bold tracking-[-0.05em]">$20</span>
               <span className="text-lg text-ink-soft">first month</span>

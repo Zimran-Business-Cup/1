@@ -18,5 +18,5 @@ With `SITE_ADDRESS=:80` Caddy serves plain HTTP, which is enough locally (set `H
 Inspect the data:
 
 ```bash
-docker compose -f deploy/docker-compose.yml exec postgres psql -U heforage -d heforage -c "select role, level, goal from profiles"
+docker compose -f deploy/docker-compose.yml exec postgres psql -U 1ry-space -d 1ry-space -c "select role, level, goal from profiles"
 ```
