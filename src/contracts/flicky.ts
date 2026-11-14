@@ -28,7 +28,7 @@ export const AnchorSchema = z.object({
 
 export const SnapshotSchema = z.object({
   mediaType: z.literal("image/jpeg"),
-  data: z.string().describe("Base64 JPEG of the workspace, longest side ≤ 1600px like Flicky"),
+  data: z.string().max(3_000_000).describe("Base64 JPEG of the workspace, longest side ≤ 1600px like Flicky (≤ ~2 MB)"),
   width: z.number().int().positive().describe("Image width in pixels"),
   height: z.number().int().positive(),
   viewportWidth: z.number().positive().describe("CSS pixels the image covers, to map points back"),

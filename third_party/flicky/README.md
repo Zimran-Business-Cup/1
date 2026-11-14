@@ -14,3 +14,5 @@ Rules for anything copied from Flicky:
 | Our file | Flicky source | Changes |
 |---|---|---|
 | `src/contracts/flicky.ts` (tag parser) | `src/main/services/element-detector.ts` | anchor targets `[POINT:#id:label]`, unknown anchors dropped |
+| `src/server/flicky/prompt.ts` | `src/main/services/prompts.ts` | workspace instead of desktop, anchors first, mentor rules, no `[TYPE]` for code |
+| `src/server/flicky/ask.ts` (request shape) | `src/main/services/claude-api.ts` | official SDK with streaming, prompt caching and refusal fallback; anchors and task context in the user turn |
