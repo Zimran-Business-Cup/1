@@ -222,7 +222,9 @@ One VPS (Ubuntu 24.04, **at least 4 GB RAM**), domain with an A record to it.
 | `postgres` | postgres:16 | no | data, run queue |
 | `tts` | Kokoro-82M | no | speech for Flicky |
 
-CI on every PR: type check, lint, build. Deploy on push to `main`: build images → GHCR → SSH → `docker compose pull && up -d` → health checks. Rollback = previous image tag. Nightly `pg_dump`.
+Status: `caddy`, `app` and `postgres` run with `docker compose -f deploy/docker-compose.yml up -d --build` (see `deploy/README.md`); `runner` and `tts` come next. The app image is ≈ 420 MB.
+
+CI on every PR: type check, lint, build, and a Docker image build. Deploy on push to `main` (next): build images → GHCR → SSH → `docker compose pull && up -d` → health checks on `/api/health`. Rollback = previous image tag. Nightly `pg_dump`.
 
 Data tables: `profiles`, `sessions`, `messages`, `tasks` (with private parts), `attempts`, `guide_steps`, `ratings`, `run_queue`.
 
