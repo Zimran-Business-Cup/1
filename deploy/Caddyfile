@@ -1,0 +1,18 @@
+# SITE_ADDRESS comes from docker-compose: ":80" locally, the domain in production
+# (Caddy then gets and renews a Let's Encrypt certificate on its own).
+{$SITE_ADDRESS} {
+	# Voice recordings for /api/flicky/transcribe can be up to 25 MB.
+	request_body {
+		max_size 30MB
+	}
+
+	# Caddy flushes text/event-stream right away, so the Flicky stream and the
+	# mentor's answers aren't buffered.
+	reverse_proxy app:3000
+
+	header {
+		-Server
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+}
