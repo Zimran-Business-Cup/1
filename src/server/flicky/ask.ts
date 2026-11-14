@@ -1,24 +1,24 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { parseFlickyAnswer, type AskEvent, type AskRequest } from "@/contracts/flicky";
+import { AiError, aiProvider, streamText, type ChatMessage } from "@/server/ai";
 import { getPublicTask } from "@/server/tasks/store";
 import { FLICKY_SYSTEM, contextText } from "./prompt";
 
-const MODEL = "claude-opus-5-5";
-const client = process.env.ANTHROPIC_API_KEY ? new Anthropic() : null;
-
-export const hasModel = () => client !== null;
+export const hasModel = () => aiProvider !== null;
 
 const sse = (event: AskEvent) => `data: ${JSON.stringify(event)}\n\n`;
 
-type Msg = Anthropic.Beta.BetaMessageParam;
+const SPOKEN_ERRORS: Partial<Record<AiError["kind"], string>> = {
+  busy: "I'm busy right now. Ask again in a few seconds.",
+  refused: "I can't help with that one. Try asking about the task.",
+};
 
-/** The API wants a user turn first and alternating roles; merge or drop the rest. */
-function normalizeHistory(history: AskRequest["history"]): Msg[] {
-  const out: Msg[] = [];
+/** Models want a user turn first and alternating roles; merge or drop the rest. */
+function normalizeHistory(history: AskRequest["history"]): ChatMessage[] {
+  const out: ChatMessage[] = [];
   for (const m of history) {
     if (!out.length && m.role !== "user") continue;
     const last = out[out.length - 1];
-    if (last && last.role === m.role && typeof last.content === "string") last.content += `\n\n${m.content}`;
+    if (last && last.role === m.role) last.content += `\n\n${m.content}`;
     else out.push({ role: m.role, content: m.content });
   }
   // The new question is a user turn, so the history must end with the assistant.
@@ -30,53 +30,30 @@ export function modelAskStream(req: AskRequest, signal: AbortSignal): ReadableSt
   const encoder = new TextEncoder();
   const task = req.taskId ? getPublicTask(req.taskId) : null;
   const known = new Set(req.anchors.map((a) => a.id));
-  const content: Anthropic.Beta.BetaContentBlockParam[] = [];
-  if (req.snapshot) {
-    content.push({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: req.snapshot.data } });
-  }
-  content.push({
-    type: "text",
-    text: contextText(req.question, req.anchors, task, req.snapshot ? { width: req.snapshot.width, height: req.snapshot.height } : null),
-  });
+  const size = req.snapshot ? { width: req.snapshot.width, height: req.snapshot.height } : null;
 
   return new ReadableStream({
     async start(controller) {
       const send = (event: AskEvent) => controller.enqueue(encoder.encode(sse(event)));
       let raw = "";
       try {
-        const stream = client!.beta.messages.stream(
+        const deltas = streamText(
           {
-            model: MODEL,
-            max_tokens: 4000,
-            betas: ["server-side-fallback-2026-07-01"],
-            fallbacks: "default",
-            system: [{ type: "text", text: FLICKY_SYSTEM, cache_control: { type: "ephemeral" } }],
-            output_config: { effort: "low" },
-            messages: [...normalizeHistory(req.history), { role: "user", content }],
+            system: FLICKY_SYSTEM,
+            history: normalizeHistory(req.history),
+            question: { text: contextText(req.question, req.anchors, task, size), jpegBase64: req.snapshot?.data },
           },
-          { signal },
+          signal,
         );
-        for await (const event of stream) {
-          if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
-            raw += event.delta.text;
-            send({ type: "chunk", text: event.delta.text });
-          }
+        for await (const text of deltas) {
+          raw += text;
+          send({ type: "chunk", text });
         }
-        const final = await stream.finalMessage();
-        if (final.stop_reason === "refusal") {
-          send({ type: "error", message: "I can't help with that one. Try asking about the task." });
-        } else {
-          send({ type: "done", ...parseFlickyAnswer(raw, known) });
-        }
+        send({ type: "done", ...parseFlickyAnswer(raw, known) });
       } catch (error) {
         if (signal.aborted) return controller.close();
-        const message =
-          error instanceof Anthropic.RateLimitError
-            ? "I'm busy right now. Ask again in a few seconds."
-            : error instanceof Anthropic.APIError
-              ? `The AI service returned an error (${error.status}). Ask again.`
-              : "Something went wrong. Ask again.";
         console.error("[flicky] ask failed:", error instanceof Error ? error.message : error);
+        const message = (error instanceof AiError && SPOKEN_ERRORS[error.kind]) || "Something went wrong. Ask again.";
         send({ type: "error", message });
       }
       controller.close();

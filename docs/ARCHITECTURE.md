@@ -14,8 +14,8 @@ flowchart LR
     App --> TTS[tts · Kokoro]
     Runner -. docker run .-> Sandbox[sandbox containers]
   end
-  App --> Claude[Claude API]
-  App --> Groq[Groq Whisper]
+  App --> LLM[Anthropic or OpenRouter]
+  App -.-> Groq[Groq Whisper, optional]
 ```
 
 | Service | What it does | Network |
@@ -26,7 +26,9 @@ flowchart LR
 | `runner` | runs hidden tests in one-off containers (see below) | internal only |
 | `tts` | Kokoro-82M text-to-speech on CPU | internal only |
 
-The internal network has no route to the internet. Only the app talks to the model provider and to Groq.
+The internal network has no route to the internet. Only the app talks to the model providers.
+
+Models are behind `src/server/ai`: Anthropic (`claude-opus-5-5`) when `ANTHROPIC_API_KEY` is set, otherwise OpenRouter (`deepseek/deepseek-v4.1-flash-1017` by default, `OPENROUTER_MODEL` to change it). Both return the mentor turn as JSON validated against `MentorTurnSchema` and stream Flicky's answer as text. Speech-to-text uses Whisper on Groq when `GROQ_API_KEY` is set, otherwise an audio-capable model on OpenRouter.
 
 ## API
 
@@ -38,10 +40,10 @@ Request and response shapes are zod schemas in `src/contracts`.
 | `GET /api/tasks/:id` | → `PublicTask` | ticket, starter files, visible tests; never hidden tests |
 | `POST /api/tasks/:id/submit` | `Submission` → `GradeResult` | code: hidden tests in the runner; design and board: rule checks |
 | `POST /api/flicky/ask` | `AskRequest` → SSE of `AskEvent` | streamed answer, then the parsed walkthrough |
-| `POST /api/flicky/transcribe` | multipart `audio` → `TranscribeResponse` | Groq Whisper |
+| `POST /api/flicky/transcribe` | multipart `audio` → `TranscribeResponse` | Groq Whisper or an OpenRouter audio model; send WAV |
 | `POST /api/flicky/speak` | `SpeakRequest` → `audio/wav` | Kokoro; 503 + `X-Fallback: browser` when unavailable |
 | `POST /api/events` | `AppEvent` → 204 | hints, runs, interest ratings |
-| `GET /api/health` | → `{ ok, db }` | used by the Docker healthcheck |
+| `GET /api/health` | → `{ ok, db, ai }` | Docker healthcheck; `ai` is the model provider or `demo` |
 
 Every route works without external keys: the mentor falls back to a scripted demo, Flicky to a recorded answer, speech-to-text to a fixed question. The response says which mode answered (`mode` in `/api/tutor`, `X-Flicky-Mode` header in Flicky routes).
 
@@ -57,8 +59,8 @@ Every route works without external keys: the mentor falls back to a scripted dem
 sequenceDiagram
   participant B as Browser
   participant A as app
-  participant G as Groq
-  participant C as Claude
+  participant G as speech-to-text
+  participant C as model
   participant K as tts
   B->>A: audio (hold Ctrl+Alt+X)
   A->>G: transcribe
