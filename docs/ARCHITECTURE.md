@@ -117,12 +117,21 @@ All shapes live in `src/contracts` as zod schemas with inferred types. Fixtures 
 | Endpoint | Request → response | Called by | Status |
 |---|---|---|---|
 | `POST /api/tutor` | chat history → `TutorTurn` | chat | exists; will gain `stage: "interview"` and `task: TaskCard` |
-| `GET /api/tasks/:id` | → `PublicTask` | workspace on Open | stub first |
-| `POST /api/tasks/:id/submit` | `Submission` → `GradeResult` | Submit button | stub first |
-| `POST /api/flicky/transcribe` | multipart `audio` → `TranscribeResponse` | Flicky bridge | stub first |
-| `POST /api/flicky/ask` | `AskRequest` → SSE of `AskEvent` | Flicky bridge | stub first |
-| `POST /api/flicky/speak` | `SpeakRequest` → `audio/wav` | Flicky bridge | stub first |
-| `POST /api/events` | `AppEvent` → 204 | all workspaces | stub first |
+| `GET /api/tasks/:id` | → `PublicTask` | workspace on Open | stub ✓ |
+| `POST /api/tasks/:id/submit` | `Submission` → `GradeResult` | Submit button | stub ✓ |
+| `POST /api/flicky/transcribe` | multipart `audio` → `TranscribeResponse` | Flicky bridge | stub ✓ |
+| `POST /api/flicky/ask` | `AskRequest` → SSE of `AskEvent` | Flicky bridge | stub ✓ |
+| `POST /api/flicky/speak` | `SpeakRequest` → `audio/wav` | Flicky bridge | stub ✓ |
+| `POST /api/events` | `AppEvent` → 204 | all workspaces | stub ✓ |
+
+What the stubs do until the real services land:
+
+- `/api/tasks/:id` serves the three fixture tasks (`backend-double-pay-1`, `design-pay-button-1`, `pm-sprint-at-risk-1`).
+- `/submit` grades design scenes and boards **for real** (rules in `src/server/grading/rules.ts`). For code it is a stub: untouched starter files fail, anything else gets the sample passing grade.
+- `/api/flicky/ask` streams a recorded answer for the request's `workspace` and drops steps whose anchors the page didn't send.
+- `/api/flicky/transcribe` checks the upload and returns a fixed question.
+- `/api/flicky/speak` answers **503 with `X-Fallback: browser`**; the bridge then speaks with `speechSynthesis`.
+- `/api/events` validates and keeps events in memory.
 
 The runner is internal (`RUNNER_URL`); the browser never calls it.
 
