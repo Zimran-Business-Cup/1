@@ -14,6 +14,14 @@ Locally, with `SITE_ADDRESS=:80` and `HTTP_PORT=8080`, the app is at http://loca
 
 Stop: `docker compose -f deploy/docker-compose.yml down` (add `-v` only if you want to wipe the database).
 
+Look at the data:
+
+```bash
+docker compose -f deploy/docker-compose.yml exec postgres psql -U heforage -d heforage -c "select role, level, goal from profiles"
+```
+
+The app runs its migrations itself on the first query, and `/api/health` shows `"db": "up"` once Postgres answers.
+
 ## Files
 
 | File | What it does |

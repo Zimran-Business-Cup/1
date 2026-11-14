@@ -4,8 +4,10 @@ import { NextResponse } from "next/server";
 import { getProfession } from "@/lib/catalog";
 import { demoTutor } from "@/lib/tutor/demo";
 import { systemPrompt } from "@/lib/tutor/prompt";
-import { MentorTurnSchema, TutorRequestSchema } from "@/lib/tutor/schema";
+import { MentorTurnSchema, TutorRequestSchema, type MentorTurn } from "@/lib/tutor/schema";
 import { allow } from "@/lib/rate-limit";
+import { saveProfile } from "@/server/db/repo";
+import { userId } from "@/server/identity";
 import { attachTask } from "@/server/tasks/assign";
 
 export const maxDuration = 60;
@@ -31,9 +33,15 @@ export async function POST(request: Request) {
   }
 
   const { history } = parsed.data;
-  if (!client) {
-    return NextResponse.json({ mode: "demo", turn: attachTask(profession.slug, history, demoTutor(profession, parsed.data)) });
-  }
+  const uid = await userId();
+  // Attach the task card and, on the turn that ends the interview, store the profile.
+  const reply = async (mode: "ai" | "demo", mentor: MentorTurn) => {
+    const turn = attachTask(profession.slug, history, mentor);
+    if (turn.task && turn.profile) await saveProfile(uid, profession.slug, turn.profile, turn.level);
+    return NextResponse.json({ mode, turn });
+  };
+
+  if (!client) return reply("demo", demoTutor(profession, parsed.data));
 
   // The API needs a user turn first; the session opens with the mentor speaking.
   const messages: Anthropic.Beta.BetaMessageParam[] = [
@@ -58,7 +66,7 @@ export async function POST(request: Request) {
     if (!response.parsed_output) {
       return NextResponse.json({ error: "The mentor's reply was cut off. Send your message again." }, { status: 502 });
     }
-    return NextResponse.json({ mode: "ai", turn: attachTask(profession.slug, history, response.parsed_output) });
+    return reply("ai", response.parsed_output);
   } catch (error) {
     if (error instanceof Anthropic.RateLimitError) {
       return NextResponse.json({ error: "The mentor is busy right now. Try again in a few seconds." }, { status: 503 });
