@@ -35,3 +35,11 @@ Without `ANTHROPIC_API_KEY` the server answers with a built-in demo mentor (labe
 Dependencies: Next.js 16, React 19, Tailwind CSS 4, `@anthropic-ai/sdk` (model `claude-opus-5-5`, server-side refusal fallback enabled), Pyodide 0.28 from jsDelivr, CodeMirror, Fluent 3D emoji (MIT) from jsDelivr.
 
 Learner code never reaches the server: it runs in a Web Worker with network APIs removed. The API key stays on the server; the mentor endpoint is rate-limited per IP.
+
+## Architecture
+
+Where the product is going and who builds what: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). The browser and the server talk through the zod contracts in `src/contracts`.
+
+## Credits
+
+The voice cursor assistant is a web port of [Flicky](https://github.com/pango07/flicky) by Julio Vaught and contributors (MIT, see `third_party/flicky/LICENSE`), itself inspired by [Clicky](https://github.com/farzaa/clicky) by Farza.
