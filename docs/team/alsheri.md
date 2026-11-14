@@ -76,6 +76,13 @@ Walkthrough: in a task, a step waits until the learner clicks its target (or wit
 `components/workspace/board/`: backlog and sprint columns, capacity counter (`board.capacity`), move cards with buttons (drag-and-drop only if time allows), report form (status, risks, ask). Submit `board` + `report`.
 **Done when** the sprint-at-risk task can be re-planned, reported and submitted.
 
+### 6b. Stripe checkout in the paywall (≈20 min)
+The case FAQ counts Stripe test mode as a plus. The server side is ready (`src/contracts/billing.ts`, `src/server/billing/README.md`).
+- "Start Pro for $20" in `Paywall.tsx`: `POST /api/checkout` with `{ returnPath: location.pathname }`. On 200 go to `url` (`location.href = url`). On 503 (`fallback: "demo"`) keep today's demo upgrade.
+- On load of the session page: if the URL has `checkout=success&session_id=…`, call `GET /api/checkout/status?session_id=…`; when `paid` is true, `setPlan("pro")`. Then clear the query with `history.replaceState`. On `checkout=cancel`, reopen the paywall or do nothing.
+- Copy under the button: "Test mode — use card 4242 4242 4242 4242, any future date, any CVC" when Stripe is on; keep "Demo checkout: no card is charged" for the demo fallback.
+**Done when** the paywall opens Stripe's test checkout, the test card pays, and the learner lands back in the same session with Pro unlocked.
+
 ### 7. Polish (until freeze at 10:30)
 Loading and error states, mobile fallback (the workspace may say "best on a laptop"), keyboard focus, no layout jumps.
 

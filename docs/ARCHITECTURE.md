@@ -123,6 +123,8 @@ All shapes live in `src/contracts` as zod schemas with inferred types. Fixtures 
 | `POST /api/flicky/ask` | `AskRequest` → SSE of `AskEvent` | Flicky bridge | stub ✓ |
 | `POST /api/flicky/speak` | `SpeakRequest` → `audio/wav` | Flicky bridge | stub ✓ |
 | `POST /api/events` | `AppEvent` → 204 | all workspaces | stub ✓ |
+| `POST /api/checkout` | `CheckoutRequest` → `{ url }` of a Stripe Checkout page (test mode); 503 `fallback: "demo"` without a key | paywall | ✓ |
+| `GET /api/checkout/status` | `?session_id=cs_…` → `CheckoutStatus` | page after Stripe's redirect | ✓ |
 
 What the stubs do until the real services land:
 
