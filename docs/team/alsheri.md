@@ -31,12 +31,12 @@ Each item has a "done when". Keep `main` deployable: hide unfinished UI behind f
 Programming → Backend engineer, Design → Product designer (shown as "UI/Product designer"), Management → Project manager are clickable; the other six show "Coming soon". Keep the list in `src/lib/features.ts` (`MVP_ROLES`) so you don't have to touch the shared `catalog.ts`.
 **Done when** only the three roles open a session.
 
-### 2. Interview UI (≈30 min, together with Anuar's prompt change)
-Anuar replaces the quiz with an interview in `/api/tutor` (new stage `"interview"`). You update the stage chips in `SessionView.tsx` and keep quick replies working.
-**Done when** a new Backend session asks about job, experience, languages, hours and goal.
+### 2. Interview UI (≈30 min)
+`/api/tutor` already runs the interview for the three MVP roles: four questions in stage `"intro"`, no quiz (stage `"quiz"` is never sent for these roles). The turn that ends the interview carries `profile` and `task` (a `TaskCard`), plus the same task as `exercise`, so the current inline `CodeTask`/`WrittenTask` still works. Update the stage chips in `SessionView.tsx` for MVP roles (e.g. Interview → Task → Fit check → Verdict) and keep quick replies working.
+**Done when** a new Backend session asks about job, tools, hours and goal, then shows the task.
 
 ### 3. Task card → full-screen workspace (≈3–4 h, sync point 02:00)
-- The mentor turn will carry `task: TaskCard`. Render it as a card in the chat with an **Open** button (instead of the inline `CodeTask`).
+- The mentor turn carries `task: TaskCard` (non-null on the turn that ends the interview). Render it as a card in the chat with an **Open** button instead of the inline `CodeTask`/`WrittenTask` (ignore `exercise` when `task` is set).
 - **Open** fetches `GET /api/tasks/:id` → `PublicTask` and expands a full-screen `WorkspaceShell`: ticket on the left, tool in the middle, the same chat on the right (collapsible). Esc / a button returns to the chat.
 - Code workspace (`components/workspace/code/`): VS Code look — file tree, tabs, CodeMirror (already in the repo), terminal panel. **Run** = `runCode()` from `src/lib/runner.ts` with `visibleTests`. **Submit** = `POST /api/tasks/:id/submit` with `files` → show `GradeResult`: each check with a "code" or "model" badge, the explanation, and the `next` task card.
 **Done when** Backend: interview → card → Open → edit → Run (red) → fix → Run (green) → Submit → verdict → next card, end to end.

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TaskCardSchema } from "@/contracts/task";
 
 // One mentor turn. The same shape comes from Claude (structured output) and
 // from the offline demo mentor, so the chat UI has a single contract.
@@ -21,22 +22,40 @@ export const ExerciseSchema = z.object({
 export const StageSchema = z
   .enum(["intro", "quiz", "tasks", "fit", "done"])
   .describe(
-    "intro: asking about experience; quiz: knowledge questions; tasks: practicing real tasks; " +
-      "fit: asking if they like the role; done: fit verdict given",
+    "intro: interviewing the learner (job, experience, tools, time, goal); quiz: knowledge questions " +
+      "(older roles only); tasks: practicing real tasks; fit: asking if they like the role; done: fit verdict given",
   );
 
-export const TutorTurnSchema = z.object({
+export const ProfileSchema = z.object({
+  currentJob: z.string().describe("What they do now, e.g. 'Accountant, 4 years'"),
+  experience: z.string().describe("How much they've done this kind of work, in their words"),
+  tools: z.array(z.string()).describe("Languages or tools they've tried for this role; empty if none"),
+  hoursPerWeek: z.number().nullable().describe("Hours a week they can practice, if they said"),
+  goal: z.string().describe("What they want to find out or reach"),
+});
+
+// What the model (or the demo mentor) writes. The server then adds `task`.
+export const MentorTurnSchema = z.object({
   message: z.string().describe("What the mentor says, in markdown. Short paragraphs, code in fenced blocks."),
   quickReplies: z.array(z.string()).describe("0-4 short tap-to-send answers; answer options for quiz questions"),
   stage: StageSchema,
   level: z
     .string()
     .nullable()
-    .describe("The learner's level once the quiz is scored, e.g. 'Beginner', 'Junior-ready basics'; otherwise null"),
+    .describe("The learner's level once it is known, e.g. 'Complete beginner', 'Junior-ready basics'; otherwise null"),
+  profile: ProfileSchema.nullable().describe("Fill it only on the turn that ends the interview; otherwise null"),
   exercise: ExerciseSchema.nullable().describe("A practice task to show now, or null"),
   taskCompleted: z.boolean().describe("True only on the turn that confirms the learner passed the current task"),
 });
 
+// What /api/tutor returns: the mentor turn plus the task card the platform
+// attached (for the MVP roles, on the turn that ends the interview).
+export const TutorTurnSchema = MentorTurnSchema.extend({
+  task: TaskCardSchema.nullable(),
+});
+
+export type Profile = z.infer<typeof ProfileSchema>;
+export type MentorTurn = z.infer<typeof MentorTurnSchema>;
 export type TutorTurn = z.infer<typeof TutorTurnSchema>;
 export type Exercise = z.infer<typeof ExerciseSchema>;
 export type Stage = z.infer<typeof StageSchema>;
