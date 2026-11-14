@@ -1,6 +1,4 @@
-// Schema migrations, applied in order on the first query after the app
-// starts (see ./index.ts). Never edit an applied migration: add a new one.
-// Kept as strings so Next.js standalone output ships them without extra files.
+// Applied in order on first use (see ./index.ts). Never edit an applied migration.
 
 export interface Migration {
   id: number;

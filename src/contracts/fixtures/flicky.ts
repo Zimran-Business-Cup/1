@@ -1,8 +1,6 @@
 import type { Anchor } from "../flicky";
 
-// A recorded Flicky answer for the stub of POST /api/flicky/ask, so the
-// overlay can be built before the server calls the model. Run it through
-// parseFlickyAnswer() to get the walkthrough.
+// Recorded answers streamed by /api/flicky/ask when no model key is set.
 
 export const designAnchors: Anchor[] = [
   { id: "design.layer.pay-button", label: "Button / Pay", role: "layer" },

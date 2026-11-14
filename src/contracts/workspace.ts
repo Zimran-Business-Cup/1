@@ -1,14 +1,10 @@
 import { z } from "zod";
 
-// What the design canvas and the sprint board send to the server.
-// The server grades these with plain code (fill type, radius, contrast,
-// capacity, priorities), so every field a rule reads lives here.
+// Design canvas and sprint board state, as submitted for grading.
 
 export const WorkspaceKindSchema = z
   .enum(["code", "design", "board"])
   .describe("code: IDE; design: Figma-like canvas; board: sprint board + status report");
-
-// ---------- design canvas ----------
 
 export const FillSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("solid"), color: z.string().describe("CSS hex, e.g. #2547D0") }),
@@ -42,8 +38,6 @@ export const DesignSceneSchema = z.object({
   height: z.number(),
   nodes: z.array(SceneNodeSchema),
 });
-
-// ---------- sprint board + report ----------
 
 export const BoardCardSchema = z.object({
   id: z.string().describe("Also used in anchors as board.card.<id>"),

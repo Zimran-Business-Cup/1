@@ -5,10 +5,7 @@ import { privateTask } from "@/server/tasks/private";
 import { getPublicTask, starterFiles } from "@/server/tasks/store";
 import { checkBoard, checkDesign, type BoardRules, type DesignRules } from "./rules";
 
-// Submission → GradeResult. `passed` comes only from code checks.
-// Code tasks run their hidden tests in the runner's sandbox; design and board
-// tasks are checked by rules.ts. Without a runner (plain `npm run dev`) code
-// tasks fall back to a stub grade that says so.
+// `passed` is decided by code only: hidden tests for code tasks, rules.ts for design and board.
 
 const DESIGN_RULES: Record<string, DesignRules> = {
   "design-pay-button-1": { nodeId: "pay-button", fill: "linear", radius: 12, minContrast: 4.5 },

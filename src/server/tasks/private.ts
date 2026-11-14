@@ -1,12 +1,9 @@
-// The server-only half of each task: hidden tests and the reference solution.
-// Never import this from client code, never put it in a PublicTask.
-// (The repo is public, so these are visible on GitHub; they never reach the browser.)
+// Server-only: hidden tests and reference solutions. Never send these to the browser.
 
 export interface PrivateTask {
-  /** Tests the runner executes on Submit: test_* functions (Python) or test() calls (JS).
-   *  The first docstring line is the check label the learner sees. */
+  /** test_* functions; the first docstring line is the check label. */
   hiddenTests: string;
-  /** Files that solve the task; the self-check runs the hidden tests against them. */
+  /** Passes every hidden test. */
   solution: { path: string; content: string }[];
 }
 

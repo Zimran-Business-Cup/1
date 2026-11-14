@@ -1,9 +1,6 @@
 import type { GradeResult, PublicTask } from "../task";
 
-// Sample data for the API stubs and for building the UI before the server is
-// ready. Each object is a valid instance of its contract (checked at compile
-// time with `satisfies`). Hidden tests and reference solutions are not here:
-// they never reach the browser.
+// Seed tasks. Hidden tests and solutions are in src/server/tasks/private.ts.
 
 export const doublePayTask = {
   card: {

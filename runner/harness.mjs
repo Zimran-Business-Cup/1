@@ -1,11 +1,5 @@
-// Programs that run inside the sandbox container. Each one receives the
-// learner's files and the tests as base64 JSON, runs every test against a
-// fresh copy of the learner's code, and prints one result line:
-//   __HF_RESULT__{"error": string|null, "tests": [{name, label, passed, message}], "stdout": string}
-//
-// Tests: functions named test_* (Python) or test("name", fn) calls (JS).
-// The first docstring line (Python) or the name (JS) is the label the learner
-// sees. Plain asserts without test functions count as one test, "tests".
+// Programs run inside the sandbox. Each runs every test against a fresh copy of
+// the learner's code and prints RESULT_MARK followed by a JSON result.
 
 export const RESULT_MARK = "__HF_RESULT__";
 

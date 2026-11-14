@@ -21,7 +21,7 @@ const TOOL_QUESTION: Record<string, string> = {
   management: "whether they have planned or led work before (quickReplies like \"I've led projects\", \"I've worked in sprints\", \"Nothing like that yet\")",
 };
 
-// MVP roles: interview → the platform's task in a full-screen workspace.
+// Roles with a seed task: interview, then the task in a workspace.
 function interviewPrompt(p: Profession, seed: PublicTask): string {
   return `${INTRO(p)}
 
@@ -34,7 +34,7 @@ The learner already sees a card with the role description, skills and pay at the
 ${STYLE}`;
 }
 
-// Other roles: the original flow with a quiz and model-written exercises.
+// Other roles: quiz, then model-written exercises.
 function quizPrompt(p: Profession): string {
   const practice =
     p.practice === "written"

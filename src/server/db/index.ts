@@ -1,9 +1,7 @@
 import postgres from "postgres";
 import { MIGRATIONS } from "./migrations";
 
-// Postgres access for the server. DATABASE_URL comes from deploy/docker-compose.yml.
-// Without it (plain `npm run dev`) db() returns null and callers fall back to
-// memory, so the app still runs without Docker.
+// Without DATABASE_URL, db() returns null and callers skip their writes.
 
 type Sql = postgres.Sql;
 

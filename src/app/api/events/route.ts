@@ -4,7 +4,7 @@ import { clientIp, errorJson, readJson } from "@/server/http";
 import { userId } from "@/server/identity";
 import { recordEvent } from "@/server/metrics/events";
 
-// POST /api/events  AppEvent → 204 (src/contracts/events.ts).
+// POST /api/events  AppEvent → 204.
 export async function POST(request: Request) {
   if (!allow(`events:${clientIp(request)}`)) return errorJson(429, "Too many events in a minute.");
   const body = await readJson(request, EventSchema);

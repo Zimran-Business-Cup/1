@@ -1,15 +1,11 @@
 import { FIXTURE_TASKS } from "@/contracts/fixtures/tasks";
 import type { PublicTask } from "@/contracts/task";
 
-// Task store. For now it serves the fixture tasks; the Postgres-backed store
-// with generated, self-checked tasks replaces it behind the same functions.
-
 export function getPublicTask(id: string): PublicTask | null {
   return FIXTURE_TASKS.find((t) => t.card.id === id) ?? null;
 }
 
-// The first task of each MVP role. Roles without an entry keep the old flow
-// (quiz, then exercises the model writes).
+// First task per role. Roles without one keep the quiz flow.
 const SEED_BY_ROLE: Record<string, string> = {
   "backend-engineer": "backend-double-pay-1",
   "product-designer": "design-pay-button-1",

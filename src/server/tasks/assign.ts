@@ -2,8 +2,7 @@ import type { PublicTask } from "@/contracts/task";
 import type { Exercise, MentorTurn, TutorTurn } from "@/lib/tutor/schema";
 import { seedTaskFor } from "./store";
 
-// Attaches the task card to the mentor turn that ends the interview.
-// The model never invents task ids: the platform picks the task.
+// The server, not the model, picks the task on the turn that ends the interview.
 
 function alreadyAssigned(history: { role: string; content: string }[]): boolean {
   return history.some((m) => {
@@ -16,7 +15,7 @@ function alreadyAssigned(history: { role: string; content: string }[]): boolean 
   });
 }
 
-/** The same task as an inline exercise, for the chat UI until the workspace lands. */
+/** The task as an inline exercise for the current chat UI. */
 export function legacyExercise(task: PublicTask): Exercise {
   const brief = `${task.ticket.body}\n\n${task.ticket.requirements.map((r) => `- ${r}`).join("\n")}`;
   if (task.code && task.card.language) {

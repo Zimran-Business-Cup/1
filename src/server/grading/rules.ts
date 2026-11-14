@@ -2,9 +2,6 @@ import type { Check } from "@/contracts/task";
 import type { BoardState, DesignScene, Report } from "@/contracts/workspace";
 import { contrastRatio } from "./contrast";
 
-// Code checks for the design and board workspaces. These decide `passed`.
-// Rules are per task; they will move to content/tasks/<role>/<task>/rules.json.
-
 export interface DesignRules {
   nodeId: string;
   fill: "solid" | "linear";

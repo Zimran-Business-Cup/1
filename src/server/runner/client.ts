@@ -1,8 +1,6 @@
 import type { CodeLanguage } from "@/contracts/task";
 
-// Client for the internal runner service (runner/). RUNNER_URL comes from
-// docker-compose; without it (plain `npm run dev`) runInSandbox returns null
-// and grading falls back to the stub.
+// runInSandbox returns null when RUNNER_URL is not set.
 
 export interface RunRequest {
   language: CodeLanguage;
