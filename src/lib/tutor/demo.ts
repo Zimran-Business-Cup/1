@@ -1,5 +1,7 @@
-import type { Profession } from "@/lib/catalog";
-import type { Exercise, TutorRequest, TutorTurn } from "./schema";
+import type { DirectionId, Profession } from "@/lib/catalog";
+import type { PublicTask } from "@/contracts/task";
+import { seedTaskFor } from "@/server/tasks/store";
+import type { Exercise, MentorTurn, TutorRequest } from "./schema";
 
 // Offline demo mentor, used when no ANTHROPIC_API_KEY is configured.
 // It follows the same protocol as the Claude mentor and reacts to the
@@ -185,8 +187,118 @@ const SCRIPTS: Record<string, RoleScript> = {
   },
 };
 
-function turn(partial: Partial<TutorTurn> & Pick<TutorTurn, "message" | "stage">): TutorTurn {
-  return { quickReplies: [], level: null, exercise: null, taskCompleted: false, ...partial };
+function turn(partial: Partial<MentorTurn> & Pick<MentorTurn, "message" | "stage">): MentorTurn {
+  return { quickReplies: [], level: null, profile: null, exercise: null, taskCompleted: false, ...partial };
+}
+
+// ---------- MVP roles: interview, then the platform's task ----------
+
+const TOOLS: Record<DirectionId, { q: string; options: string[] }> = {
+  programming: { q: "Which languages or tools have you tried?", options: ["Python", "JavaScript", "Some SQL", "Nothing yet"] },
+  design: { q: "Which design tools have you used?", options: ["Figma", "Canva or similar", "Nothing yet"] },
+  management: { q: "Have you planned or led work before?", options: ["I've led projects", "I've worked in sprints", "Nothing like that yet"] },
+};
+const HOURS = ["1-2 hours", "3-5 hours", "6+ hours"];
+const GOALS = ["See if I'd like this job", "Switch careers this year", "Just curious"];
+const LEVELS = ["Complete beginner", "Some basics", "Junior-ready basics", "Hands-on experience"];
+
+const PRAISE: Record<PublicTask["card"]["workspace"], string> = {
+  code: "You look up the payment by its key before creating one, which is exactly what idempotency means.",
+  design: "You tied each change to the design-system rule, which is how design reviews go.",
+  board: "You put the urgent fix first and said exactly what you need from the stakeholder.",
+};
+const HINT: Record<PublicTask["card"]["workspace"], string> = {
+  code: "Look at `handle_pay`: it creates a payment before checking the key. First look for an existing payment with the same key; if there is one, return it.",
+  design: "Select the button, open the fill type and pick a linear gradient. Then set the corner radius to 12 and check the text still reads well.",
+  board: "Add up the sprint points first: it's over capacity. Move a P2 out, take the P0 fix in, then write the status, the risk with a date, and your ask.",
+};
+
+function demoInterview(p: Profession, req: TutorRequest, seed: PublicTask): MentorTurn {
+  const answers = req.history.filter((m) => m.role === "user").map((m) => m.content);
+  const role = p.name.toLowerCase();
+  const tools = TOOLS[p.direction];
+  const workspace = seed.card.workspace;
+
+  if (answers.length === 0) {
+    return turn({
+      message: `Hi! Let's see what a **${role}** really does, and whether you'd enjoy it. A few quick questions first, so your first task fits you. What do you do now, and how much have you done this kind of work?`,
+      quickReplies: EXPERIENCE,
+      stage: "intro",
+    });
+  }
+  if (answers.length === 1) return turn({ message: `Got it. ${tools.q}`, quickReplies: tools.options, stage: "intro" });
+  if (answers.length === 2) return turn({ message: "How many hours a week can you practice?", quickReplies: HOURS, stage: "intro" });
+  if (answers.length === 3) return turn({ message: "Last one: what do you want to find out?", quickReplies: GOALS, stage: "intro" });
+
+  const exp = EXPERIENCE.indexOf(answers[0]);
+  const level = LEVELS[Math.max(0, exp)];
+
+  if (answers.length === 4) {
+    const hours = Number(answers[2].match(/\d+/)?.[0]);
+    const noTools = answers[1] === tools.options[tools.options.length - 1];
+    return turn({
+      message: `Thanks, that's all I need. Your starting point: **${level}**.\n\nYour first task is **${seed.card.title}**: ${seed.card.summary} It opens with the real tool, the way a junior gets it in week one. I'm here if you get stuck.`,
+      stage: "tasks",
+      level,
+      profile: {
+        currentJob: exp >= 0 ? "Not stated" : answers[0],
+        experience: answers[0],
+        tools: noTools ? [] : [answers[1]],
+        hoursPerWeek: Number.isFinite(hours) ? hours : null,
+        goal: answers[3],
+      },
+    });
+  }
+
+  const last = answers[answers.length - 1];
+
+  if (FIT.includes(last)) {
+    const verdict =
+      last === FIT[0]
+        ? `That's a good sign. You solved a real task and liked the work. Next: a harder version of the same task, then a weekly practice plan.`
+        : last === FIT[1]
+          ? `Fair. "OK" often means the work is fine but the domain doesn't excite you. Try a role from another direction and compare how each felt.`
+          : `That's a useful answer too: you found out in 20 minutes, not after a $10,000 bootcamp. Try a role from another direction and compare.`;
+    return turn({ message: verdict, stage: "done", level });
+  }
+
+  if (last.startsWith("[Submission]")) {
+    if (workspace === "code") {
+      if (!last.includes(PASS_MARK)) {
+        const why = last.match(/error: (.*)/)?.[1] ?? "a check failed";
+        return turn({
+          message: `Close. The check says: *${why}*. ${HINT.code}`,
+          quickReplies: ["Give me a hint"],
+          stage: "tasks",
+          level,
+        });
+      }
+    } else {
+      const words = last.split("\n").slice(1).join("\n").trim().split(/\s+/).filter(Boolean).length;
+      if (words < 20) {
+        return turn({
+          message: "Good start, but it's too short to judge. Say what you'd change and why, step by step, and submit again.",
+          stage: "tasks",
+          level,
+        });
+      }
+    }
+    return turn({
+      message: `Passed. ${PRAISE[workspace]}\n\nHonestly: how did this work feel?`,
+      quickReplies: FIT,
+      stage: "fit",
+      level,
+      taskCompleted: true,
+    });
+  }
+
+  if (/hint|stuck|help/i.test(last)) return turn({ message: HINT[workspace], stage: "tasks", level });
+
+  return turn({
+    message: "In demo mode I can only answer about this task. With the AI mentor connected you can ask me anything; for now, try the task above.",
+    stage: "tasks",
+    level,
+  });
 }
 
 const quizQuestion = (script: RoleScript, i: number) =>
@@ -203,7 +315,9 @@ function levelFor(score: number, experience: string): string {
   return "Complete beginner";
 }
 
-export function demoTutor(p: Profession, req: TutorRequest): TutorTurn {
+export function demoTutor(p: Profession, req: TutorRequest): MentorTurn {
+  const seed = seedTaskFor(p.slug);
+  if (seed) return demoInterview(p, req, seed);
   const script = SCRIPTS[p.slug];
   const answers = req.history.filter((m) => m.role === "user").map((m) => m.content);
   const role = p.name.toLowerCase();
