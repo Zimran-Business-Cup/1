@@ -208,7 +208,7 @@ Anchor ids are lowercase dotted paths without colons: `code.run`, `code.submit`,
 
 Run in the browser (exists): Pyodide or a JS Web Worker with network APIs removed, 10 s timeout.
 
-Submit and self-check on the server (`runner/`): a one-off container per attempt, no network, non-root, read-only root, `/tmp` in memory, 1 CPU, 256 MB, 64 processes, 10 s, output ≤ 1 MB, gVisor if available (plain Docker with the same limits otherwise). At most two at a time; a queue table in Postgres.
+Submit and self-check on the server (`runner/`, ✓): a one-off container per attempt, no network, non-root, read-only root, `/tmp` in memory, 1 CPU, 256 MB, 64 processes, 10 s, output ≤ 1 MB, gVisor if available (plain runc with the same limits otherwise). At most two at a time, up to 20 waiting in memory. Hidden tests and reference solutions live in `src/server/tasks/private.ts`; each `test_*` becomes one check, labelled by its docstring. Without `RUNNER_URL` (plain `npm run dev`) code grading falls back to a stub grade that says the hidden tests didn't run. Details and the escape attempts we tried: `runner/README.md`.
 
 ## 11. Infrastructure
 

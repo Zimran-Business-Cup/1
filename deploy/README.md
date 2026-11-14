@@ -27,10 +27,12 @@ The app runs its migrations itself on the first query, and `/api/health` shows `
 | File | What it does |
 |---|---|
 | `Dockerfile` | builds Next.js with `output: "standalone"`, runs `server.js` as the `node` user, healthcheck on `/api/health` (image ≈ 420 MB) |
-| `docker-compose.yml` | `caddy` (only public service), `app`, `postgres` with a healthcheck; app waits for Postgres, Caddy waits for a healthy app |
+| `docker-compose.yml` | `caddy` (only public service), `app`, `postgres`, `runner`; Postgres and the runner live on an `internal` network with no internet, the app is on both; app waits for Postgres, Caddy waits for a healthy app |
 | `Caddyfile` | proxy to `app:3000`, 30 MB request limit for voice uploads, no `Server` header; SSE streams pass through unbuffered |
 | `.env.example` | `SITE_ADDRESS`, `HTTP_PORT`, `HTTPS_PORT`, `POSTGRES_PASSWORD`, `ANTHROPIC_API_KEY`, `GROQ_API_KEY` |
 
-Coming next: `runner` (code sandbox) and `tts` (Kokoro-82M) services, and a deploy workflow (build → GHCR → SSH → `docker compose pull && up -d`).
+The `runner` service (code sandbox, see `runner/README.md`) mounts `/var/run/docker.sock` and pulls `python:3.12-slim` and `node:22-slim` on its first start.
+
+Coming next: the `tts` (Kokoro-82M) service and a deploy workflow (build → GHCR → SSH → `docker compose pull && up -d`).
 
 Checked locally: stack up in under a minute; pages, static files, `/api/tasks`, the demo mentor, a 5 MB upload and the Flicky SSE stream (chunks arrive every ~40 ms) all work through Caddy.

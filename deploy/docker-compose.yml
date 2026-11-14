@@ -1,7 +1,8 @@
 # heforage on one VPS. Run from the repo root:
 #   cp deploy/.env.example deploy/.env    # then fill it in
 #   docker compose -f deploy/docker-compose.yml up -d --build
-# Only Caddy publishes ports; everything else talks on the internal network.
+# Only Caddy publishes ports. Postgres and the runner sit on an internal
+# network with no way out to the internet; the app is on both networks.
 name: heforage
 
 services:
@@ -22,6 +23,7 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
+    networks: [default]
 
   app:
     build:
@@ -34,9 +36,13 @@ services:
         required: false
     environment:
       DATABASE_URL: postgres://heforage:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}@postgres:5432/heforage
+      RUNNER_URL: http://runner:8080
     depends_on:
       postgres:
         condition: service_healthy
+      runner:
+        condition: service_started
+    networks: [default, internal]
 
   postgres:
     image: postgres:16-alpine
@@ -52,8 +58,26 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+    networks: [internal]
 
-  # Planned: runner (code sandbox) and tts (Kokoro-82M), see deploy/README.md.
+  # Runs learner code in one-off sandbox containers (no network, read-only,
+  # non-root, 1 CPU, 256 MB, 64 processes, 10 s). It needs the Docker socket
+  # to start them, so it has no published ports and no internet access.
+  runner:
+    build:
+      context: ../runner
+    image: ${RUNNER_IMAGE:-heforage-runner:local}
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks: [internal]
+
+  # Planned: tts (Kokoro-82M), see deploy/README.md.
+
+networks:
+  default: {}
+  internal:
+    internal: true
 
 volumes:
   caddy_data:
