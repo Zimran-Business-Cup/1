@@ -1,15 +1,13 @@
 import type { AppEvent } from "@/contracts/events";
+import { saveEvent } from "@/server/db/repo";
 
-// In-memory event log until Postgres is wired in. Bounded so a long-running
-// dev server doesn't grow forever.
+// Events go to Postgres. Without a database (plain `npm run dev`) they are kept
+// in a bounded in-memory log instead.
 const MAX = 5000;
-const log: (AppEvent & { at: number })[] = [];
+const memory: (AppEvent & { userId: string; at: number })[] = [];
 
-export function recordEvent(event: AppEvent) {
-  log.push({ ...event, at: Date.now() });
-  if (log.length > MAX) log.splice(0, log.length - MAX);
-}
-
-export function eventsFor(sessionId: string) {
-  return log.filter((e) => e.sessionId === sessionId);
+export async function recordEvent(userId: string, event: AppEvent) {
+  if (await saveEvent(userId, event)) return;
+  memory.push({ ...event, userId, at: Date.now() });
+  if (memory.length > MAX) memory.splice(0, memory.length - MAX);
 }
