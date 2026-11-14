@@ -226,7 +226,16 @@ Status: `caddy`, `app` and `postgres` run with `docker compose -f deploy/docker-
 
 CI on every PR: type check, lint, build, and a Docker image build. Deploy on push to `main` (next): build images → GHCR → SSH → `docker compose pull && up -d` → health checks on `/api/health`. Rollback = previous image tag. Nightly `pg_dump`.
 
-Data tables: `profiles`, `sessions`, `messages`, `tasks` (with private parts), `attempts`, `guide_steps`, `ratings`, `run_queue`.
+**Data (Postgres, `src/server/db`).** Learners are anonymous: the first API call sets an httpOnly cookie `hf_uid` with a random UUID (`src/server/identity.ts`). Migrations are TypeScript strings in `src/server/db/migrations.ts`, applied in order on the first query under an advisory lock; never edit an applied one, add a new one.
+
+| Table | Written by | Holds |
+|---|---|---|
+| `users` | every write | anonymous id, first and last seen |
+| `profiles` | `/api/tutor`, on the turn that ends the interview | one row per learner and role: job, experience, tools, hours, goal, level |
+| `attempts` | `/api/tasks/:id/submit` | every Submit: task, workspace, `passed`, checks, the submission |
+| `events` | `/api/events` | hints, runs, interest ratings |
+
+Writes are best-effort: if Postgres is down the request still succeeds and the write is logged as skipped; without `DATABASE_URL` (plain `npm run dev`) nothing is written and events stay in memory. `/api/health` reports `db: up | down | off`. Chat sessions still live in the browser (`src/lib/sessions.ts`); `tasks` (generated, with private parts) and `run_queue` come with the runner.
 
 ## 12. How we work without conflicts
 

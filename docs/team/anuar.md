@@ -17,8 +17,8 @@ Whole picture: [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md).
 1. ✓ **Contracts PR.** Zones, contracts, fixtures, CI.
 2. ✓ **Stubs.** Every endpoint answers with the contract shapes; design and board grading is real.
 3. ✓ **Interview + task cards in `/api/tutor`.** Interview in stage `intro` for MVP roles, `profile` on the last interview turn, `task` attached by the server, `exercise` kept for the old UI. Stage enum unchanged so `STAGE_LABEL` in the UI still compiles; move the schema into `src/contracts/tutor.ts` once Alsheri drops the quiz stage.
-4. **Self-host.** `deploy/`: Dockerfile (Next.js `output: "standalone"`), compose (`caddy`, `app`, `postgres`, `runner`, `tts`), Caddyfile with SSE passthrough, deploy workflow. Works locally with `docker compose up` before the VPS exists.
-5. **Postgres.** Schema for profiles, sessions, messages, tasks (with private parts), attempts, guide_steps, ratings, run_queue.
+4. ✓ **Self-host.** Dockerfile, compose (`caddy`, `app`, `postgres`), Caddyfile, CI image build. Still to add: `runner` and `tts` services, the deploy workflow.
+5. ✓ **Postgres.** Anonymous id cookie, migrations, `users`, `profiles`, `attempts`, `events`; best-effort writes. Still to add: `tasks` and `run_queue` with the runner, sessions on the server once the UI moves off localStorage.
 6. **Runner (sync 05:30).** Hidden tests on Submit, self-check of generated tasks; limits from ARCHITECTURE §10.
 7. **Grading.** Code checks for scenes (fill type, radius, contrast) and boards (capacity, P0s in sprint, dependencies); model explanation and rubric checks for the report.
 8. **Flicky server (sync 08:30).** Port `prompts.ts` + the model call from Flicky to `src/server/flicky`, add anchors and task context to the prompt, stream SSE, parse with `parseFlickyAnswer` and drop unknown anchors. Groq Whisper for `/transcribe` (free tier), Kokoro container for `/speak`; measure Kokoro latency on the VPS, switch to OpenAI TTS if a sentence takes > 2 s.
