@@ -48,3 +48,10 @@ jobs:
         with:
           context: runner
           push: false
+      - name: Build the TTS image
+        uses: docker/build-push-action@v6
+        with:
+          context: tts
+          push: false
+          cache-from: type=gha,scope=tts
+          cache-to: type=gha,mode=max,scope=tts
