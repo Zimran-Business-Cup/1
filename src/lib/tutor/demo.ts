@@ -191,7 +191,7 @@ function turn(partial: Partial<MentorTurn> & Pick<MentorTurn, "message" | "stage
   return { quickReplies: [], level: null, profile: null, exercise: null, taskCompleted: false, ...partial };
 }
 
-// ---------- MVP roles: interview, then the platform's task ----------
+// Interview for roles with a seed task.
 
 const TOOLS: Record<DirectionId, { q: string; options: string[] }> = {
   programming: { q: "Which languages or tools have you tried?", options: ["Python", "JavaScript", "Some SQL", "Nothing yet"] },

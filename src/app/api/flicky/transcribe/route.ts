@@ -6,9 +6,8 @@ import { clientIp, errorJson } from "@/server/http";
 
 const MAX_BYTES = 25 * 1024 * 1024; // Groq's free-tier upload limit
 
-// POST /api/flicky/transcribe  multipart/form-data with `audio` → TranscribeResponse.
-// Groq Whisper when GROQ_API_KEY is set; otherwise a fixed question
-// (header X-Flicky-Mode: demo) so the flow can be built without a key.
+// POST /api/flicky/transcribe  multipart `audio` → TranscribeResponse.
+// Without GROQ_API_KEY it returns a fixed question (X-Flicky-Mode: demo).
 export async function POST(request: Request) {
   if (!allow(`stt:${clientIp(request)}`)) return errorJson(429, "Too many recordings in a minute.");
 

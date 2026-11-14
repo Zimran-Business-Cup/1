@@ -1,40 +1,22 @@
-# deploy/ — owner: Anuar
-
-Everything that runs the product on our own VPS. No Vercel, no Supabase.
-
-## Run it
+# deploy
 
 ```bash
-cp deploy/.env.example deploy/.env     # set POSTGRES_PASSWORD, keys, ports
+cp deploy/.env.example deploy/.env    # set POSTGRES_PASSWORD, keys and SITE_ADDRESS
 docker compose -f deploy/docker-compose.yml up -d --build
 docker compose -f deploy/docker-compose.yml ps
 ```
 
-Locally, with `SITE_ADDRESS=:80` and `HTTP_PORT=8080`, the app is at http://localhost:8080. On the server, set `SITE_ADDRESS` to the domain (its A record must point at the server) and keep ports 80/443: Caddy gets and renews the HTTPS certificate on its own.
+With `SITE_ADDRESS=:80` Caddy serves plain HTTP, which is enough locally (set `HTTP_PORT` if port 80 is taken). In production set `SITE_ADDRESS` to the domain, point its A record at the server and keep ports 80 and 443 open; Caddy obtains and renews the certificate.
 
-Stop: `docker compose -f deploy/docker-compose.yml down` (add `-v` only if you want to wipe the database).
+| File | Purpose |
+|---|---|
+| `Dockerfile` | Next.js standalone build, runs as `node`, healthcheck on `/api/health` |
+| `docker-compose.yml` | `caddy`, `app`, `postgres`, `runner`, `tts`; only Caddy publishes ports |
+| `Caddyfile` | reverse proxy, 30 MB request limit for voice uploads |
+| `.env.example` | settings and keys |
 
-Look at the data:
+Inspect the data:
 
 ```bash
 docker compose -f deploy/docker-compose.yml exec postgres psql -U heforage -d heforage -c "select role, level, goal from profiles"
 ```
-
-The app runs its migrations itself on the first query, and `/api/health` shows `"db": "up"` once Postgres answers.
-
-## Files
-
-| File | What it does |
-|---|---|
-| `Dockerfile` | builds Next.js with `output: "standalone"`, runs `server.js` as the `node` user, healthcheck on `/api/health` (image ≈ 420 MB) |
-| `docker-compose.yml` | `caddy` (only public service), `app`, `postgres`, `runner`; Postgres and the runner live on an `internal` network with no internet, the app is on both; app waits for Postgres, Caddy waits for a healthy app |
-| `Caddyfile` | proxy to `app:3000`, 30 MB request limit for voice uploads, no `Server` header; SSE streams pass through unbuffered |
-| `.env.example` | `SITE_ADDRESS`, `HTTP_PORT`, `HTTPS_PORT`, `POSTGRES_PASSWORD`, `ANTHROPIC_API_KEY`, `GROQ_API_KEY` |
-
-The `runner` service (code sandbox, see `runner/README.md`) mounts `/var/run/docker.sock` and pulls `python:3.12-slim` and `node:22-slim` on its first start.
-
-The `tts` service (`tts/`, Kokoro-82M via kokoro-onnx, ≈ 840 MB image with the int8 model baked in) serves `/api/flicky/speak`. It needs no keys and sits on the internal network.
-
-Coming next: a deploy workflow (build → GHCR → SSH → `docker compose pull && up -d`).
-
-Checked locally: stack up in under a minute; pages, static files, `/api/tasks`, the demo mentor, a 5 MB upload and the Flicky SSE stream (chunks arrive every ~40 ms) all work through Caddy.

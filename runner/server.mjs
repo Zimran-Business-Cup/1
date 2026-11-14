@@ -1,7 +1,4 @@
-// heforage runner: runs learner code for hidden tests and task self-checks.
-// Every attempt gets a one-off container: no network, read-only root, /tmp in
-// memory, non-root user, no capabilities, 1 CPU, 256 MB, 64 processes, 10 s.
-// Internal service: only the app container can reach it (see docker-compose.yml).
+// Runs learner code in one-off sandbox containers. See README.md.
 import { spawn, execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import http from "node:http";
@@ -31,7 +28,7 @@ const ready = (async () => {
   console.log(`[runner] ready: gvisor=${gvisor}, images pulled`);
 })();
 
-// ---------- a tiny queue: at most MAX_PARALLEL containers at once ----------
+// At most MAX_PARALLEL containers at once.
 let active = 0;
 const waiting = [];
 function acquire() {

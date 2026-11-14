@@ -7,7 +7,7 @@ import { errorJson, readJson } from "@/server/http";
 import { userId } from "@/server/identity";
 import { getPublicTask } from "@/server/tasks/store";
 
-// POST /api/tasks/:id/submit  Submission → GradeResult (src/contracts/task.ts).
+// POST /api/tasks/:id/submit  Submission → GradeResult.
 export async function POST(request: NextRequest, ctx: RouteContext<"/api/tasks/[id]/submit">) {
   const { id } = await ctx.params;
   const task = getPublicTask(id);

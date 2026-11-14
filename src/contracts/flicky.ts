@@ -1,21 +1,10 @@
 import { z } from "zod";
 import { WorkspaceKindSchema } from "./workspace";
 
-// Contract for the Flicky port: the voice cursor assistant that lives over
-// every workspace. Browser side: src/lib/flicky (bridge) + src/components/flicky
-// (ported UI). Server side: src/app/api/flicky/* + src/server/flicky.
-//
-// The tag parser at the bottom is adapted from Flicky's element-detector.ts:
-//   Copyright (c) 2026 Julio Vaught and Flicky contributors. MIT License.
-//   https://github.com/pango07/flicky — full notice in third_party/flicky/LICENSE.
-// Changes: anchor targets ([POINT:#id:label]) next to Flicky's pixel targets,
-// and unknown anchors are dropped.
+// The tag parser below is adapted from Flicky's element-detector.ts.
+// Copyright (c) 2026 Julio Vaught and Flicky contributors. MIT License, see third_party/flicky/LICENSE.
 
-// ---------- anchors ----------
-
-/** Anchor ids: lowercase dotted paths, e.g. code.run, code.lines.6-8,
- *  design.layer.pay-button, design.fill.type, board.card.fix-double-charge,
- *  report.field.status. No colons: the tag format uses them as separators. */
+/** e.g. code.run, code.lines.6-8, design.fill.type. No colons: tags use them as separators. */
 export const ANCHOR_ID = /^[a-z0-9][a-z0-9.-]*$/;
 
 export const AnchorSchema = z.object({
@@ -23,8 +12,6 @@ export const AnchorSchema = z.object({
   label: z.string().max(80).describe("What the element is, as the learner sees it"),
   role: z.enum(["button", "field", "lines", "layer", "card", "tab", "region"]),
 });
-
-// ---------- requests ----------
 
 export const SnapshotSchema = z.object({
   mediaType: z.literal("image/jpeg"),
@@ -47,17 +34,14 @@ export const AskRequestSchema = z.object({
     .max(40),
 });
 
-/** POST /api/flicky/transcribe takes multipart/form-data with an `audio` file
- *  (webm/opus or wav, ≤ 25 MB) and returns this. */
+/** Response of POST /api/flicky/transcribe (multipart `audio`, up to 25 MB). */
 export const TranscribeResponseSchema = z.object({ text: z.string() });
 
-/** POST /api/flicky/speak returns audio/wav (Kokoro) for this body. */
+/** Body of POST /api/flicky/speak, which returns audio/wav. */
 export const SpeakRequestSchema = z.object({
   text: z.string().min(1).max(1500),
   voice: z.string().optional(),
 });
-
-// ---------- walkthrough ----------
 
 export const WalkthroughTargetSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("anchor"), anchorId: z.string() }),
@@ -73,7 +57,7 @@ export const WalkthroughStepSchema = z.object({
 
 export const WalkthroughSchema = z.object({ steps: z.array(WalkthroughStepSchema).min(1) });
 
-/** Events of the text/event-stream answer from POST /api/flicky/ask. */
+/** Server-sent events of POST /api/flicky/ask. */
 export const AskEventSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("transcript"), text: z.string() }),
   z.object({ type: z.literal("chunk"), text: z.string().describe("Raw model text; may hold partial tags") }),
@@ -96,10 +80,8 @@ export type WalkthroughStep = z.infer<typeof WalkthroughStepSchema>;
 export type Walkthrough = z.infer<typeof WalkthroughSchema>;
 export type AskEvent = z.infer<typeof AskEventSchema>;
 
-// ---------- tag parser (shared by server and browser) ----------
-
-// [POINT:#design.fill.type:open the fill type]      → anchor target
-// [POINT:412,238:this corner:screen0]                → pixel target in snapshot coordinates
+// [POINT:#design.fill.type:open the fill type]   anchor target
+// [POINT:412,238:this corner:screen0]             pixel target in snapshot coordinates
 const POINT_TAG = /\[POINT:(?:#([a-z0-9][a-z0-9.-]*):([^\]]+)|(\d+),(\d+):([^:\]]+)(?::screen(\d+))?)\]/g;
 const TYPE_TAG = /\[TYPE:((?:[^\]\\]|\\.)+)\]/g;
 /** Strips POINT and TYPE tags from text before it is shown or spoken. */
@@ -111,11 +93,7 @@ export interface ParsedAnswer {
   typeRequests: string[];
 }
 
-/**
- * Parses a finished model answer. Pass `knownAnchors` to drop steps that point
- * at anchors the workspace never registered, so the cursor can't fly to a
- * button that doesn't exist.
- */
+/** Parses a finished answer. Steps that point at anchors outside `knownAnchors` are dropped. */
 export function parseFlickyAnswer(raw: string, knownAnchors?: ReadonlySet<string>): ParsedAnswer {
   const targets: { label: string; target: WalkthroughTarget }[] = [];
   POINT_TAG.lastIndex = 0;
@@ -152,6 +130,5 @@ export function pointToViewport(target: { x: number; y: number }, snap: Pick<Sna
   };
 }
 
-/** Flicky's dwell time per step when a step advances on a timer:
- *  longer captions stay longer, 2.6 s to 5.5 s. */
+/** Flicky's per-step dwell time for timed walkthroughs, 2.6–5.5 s. */
 export const dwellMs = (label: string) => Math.max(2600, Math.min(5500, 1800 + label.length * 80));

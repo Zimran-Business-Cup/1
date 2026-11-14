@@ -1,9 +1,7 @@
 import { codeAnchors, designAnchors, doublePayAnswer, gradientAnswer } from "@/contracts/fixtures/flicky";
 import { parseFlickyAnswer, type AskEvent, type AskRequest } from "@/contracts/flicky";
 
-// Stub for POST /api/flicky/ask: streams a recorded Flicky answer as SSE so
-// the overlay can be built before the model call exists. The real version
-// (Flicky prompt + snapshot + anchors → Claude stream) replaces `answerFor`.
+// Recorded answers streamed by /api/flicky/ask when no model key is set.
 
 const boardAnswer =
   "Start with the numbers: the sprint is 8 points over capacity. " +
@@ -30,8 +28,7 @@ function chunks(raw: string): string[] {
 export function stubAskStream(req: AskRequest, signal: AbortSignal): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
   const { raw, fallbackAnchors } = answerFor(req);
-  // Steps are filtered by the anchors the page registered. With none sent,
-  // the stub keeps the anchors of its own recorded answer.
+  // Without anchors from the page, keep the recorded answer's own steps.
   const known = new Set(req.anchors.length ? req.anchors.map((a) => a.id) : fallbackAnchors);
 
   return new ReadableStream({

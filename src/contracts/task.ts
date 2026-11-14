@@ -1,11 +1,8 @@
 import { z } from "zod";
 import { BoardStateSchema, DesignSceneSchema, ReportSchema, WorkspaceKindSchema } from "./workspace";
 
-// A task travels in three shapes:
-//   TaskCard   – the card the mentor drops into the chat ("Task 1 · Open")
-//   PublicTask – what the browser gets when the learner opens it
-//   (private)  – reference solution and hidden tests; they never leave the server
-// Submit sends a Submission and gets a GradeResult back.
+// TaskCard is shown in the chat; PublicTask is sent to the browser when the task opens.
+// Hidden tests and reference solutions stay on the server (src/server/tasks/private.ts).
 
 export const CodeLanguageSchema = z.enum(["python", "javascript"]);
 

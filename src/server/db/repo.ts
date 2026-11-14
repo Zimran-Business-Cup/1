@@ -4,8 +4,7 @@ import type { GradeResult, PublicTask, Submission } from "@/contracts/task";
 import type { Profile } from "@/lib/tutor/schema";
 import { bestEffort } from "./index";
 
-// Writes for the learner's data. Each one is best-effort: if Postgres is down
-// or not configured, the request still succeeds and the write is skipped.
+// Best-effort writes: a database error is logged and never fails the request.
 
 type Tx = postgres.TransactionSql;
 

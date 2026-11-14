@@ -6,8 +6,9 @@ Try a new career before you commit. heforage lets US adults who are thinking abo
 
 - **Catalog**: 3 directions (Programming, Design & marketing, Management), 9 roles.
 - **Role brief**: duties, qualifications, skills, and US pay from BLS OEWS May 2025 (percentiles, top-paying metros, employer types), with sources.
-- **Mentor session per role**: intro → level quiz → real tasks → fit check → verdict. Several sessions can be open at once.
-- **In-chat practice**: Python (Pyodide) and JavaScript run in a browser Web Worker with automatic checks; written tasks for design, marketing and management roles.
+- **Mentor session per role**: a short interview, then real tasks, a fit check and a verdict. Several sessions can be open at once.
+- **Practice**: Python (Pyodide) and JavaScript run in a browser Web Worker against visible tests. On Submit, hidden tests run on the server in a throwaway sandbox container; design and sprint-board tasks are graded by rule checks.
+- **Flicky**: a voice assistant that answers questions about the task and points at the interface (speech-to-text with Groq Whisper, text-to-speech with Kokoro).
 - **Paywall**: the first task in every role is free; Pro is $20 the first month, then $35/month (demo checkout, no charge).
 
 ## Run it
@@ -20,6 +21,13 @@ npm run dev
 
 Without `ANTHROPIC_API_KEY` the server answers with a built-in demo mentor (labelled "Demo mentor" in the UI). It reacts to the learner's real answers and real test results, but uses a fixed bank of questions and tasks.
 
+The full stack (Caddy, app, Postgres, sandbox runner, Kokoro) runs with Docker Compose:
+
+```bash
+cp deploy/.env.example deploy/.env   # set POSTGRES_PASSWORD and keys
+docker compose -f deploy/docker-compose.yml up -d --build
+```
+
 ## How it works
 
 | Part | Where |
@@ -28,17 +36,22 @@ Without `ANTHROPIC_API_KEY` the server answers with a built-in demo mentor (labe
 | Pay data (BLS OEWS May 2025) | `src/lib/pay.ts` |
 | Mentor API (Claude, structured output) | `src/app/api/tutor/route.ts`, `src/lib/tutor/` |
 | Demo mentor (no key) | `src/lib/tutor/demo.ts` |
+| API contracts (zod) | `src/contracts/` |
+| Tasks, grading, Flicky, database | `src/server/` |
 | Browser code runner | `src/lib/runner.ts` |
-| Sessions (localStorage for now, Supabase next) | `src/lib/sessions.ts` |
+| Server-side sandbox | `runner/` |
+| Text-to-speech | `tts/` |
+| Deployment | `deploy/` |
+| Sessions (localStorage) | `src/lib/sessions.ts` |
 | UI | `src/components/` |
 
-Dependencies: Next.js 16, React 19, Tailwind CSS 4, `@anthropic-ai/sdk` (model `claude-opus-5-5`, server-side refusal fallback enabled), Pyodide 0.28 from jsDelivr, CodeMirror, Fluent 3D emoji (MIT) from jsDelivr.
+Dependencies: Next.js 16, React 19, Tailwind CSS 4, `@anthropic-ai/sdk` (model `claude-opus-5-5`, server-side refusal fallback enabled), Postgres via `postgres`, Pyodide 0.28 from jsDelivr, CodeMirror, Fluent 3D emoji (MIT) from jsDelivr.
 
-Learner code never reaches the server: it runs in a Web Worker with network APIs removed. The API key stays on the server; the mentor endpoint is rate-limited per IP.
+API keys stay on the server, and the mentor and Flicky endpoints are rate-limited per IP.
 
 ## Architecture
 
-Where the product is going and who builds what: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). The browser and the server talk through the zod contracts in `src/contracts`.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Credits
 

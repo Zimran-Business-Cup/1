@@ -1,8 +1,7 @@
 import type { AppEvent } from "@/contracts/events";
 import { saveEvent } from "@/server/db/repo";
 
-// Events go to Postgres. Without a database (plain `npm run dev`) they are kept
-// in a bounded in-memory log instead.
+// Falls back to a bounded in-memory log when there is no database.
 const MAX = 5000;
 const memory: (AppEvent & { userId: string; at: number })[] = [];
 

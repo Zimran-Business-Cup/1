@@ -1,9 +1,5 @@
 // Adapted from Flicky (https://github.com/pango07/flicky), src/main/services/prompts.ts
 // Copyright (c) 2026 Julio Vaught and Flicky contributors. MIT License, see third_party/flicky/LICENSE.
-//
-// Changes: the screenshot is our workspace, not the whole desktop; anchor
-// targets [POINT:#id:label] come first and Flicky's pixel targets are the
-// fallback; [TYPE:...] never writes code solutions; mentor rules for tasks.
 
 import type { Anchor } from "@/contracts/flicky";
 import type { PublicTask } from "@/contracts/task";

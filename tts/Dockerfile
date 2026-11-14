@@ -1,6 +1,5 @@
 # syntax=docker/dockerfile:1
-# Kokoro-82M (Apache 2.0) on CPU through kokoro-onnx. Internal service: no
-# published ports, no keys. Model: the int8 export (88 MB) for speed on a small VPS.
+# Kokoro-82M (Apache 2.0) via kokoro-onnx with the 88 MB int8 model.
 FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
 RUN pip install kokoro-onnx==0.6.1 && pip freeze > /requirements.lock

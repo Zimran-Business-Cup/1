@@ -3,9 +3,8 @@ import { allow } from "@/lib/rate-limit";
 import { hasTts, speak, VoiceError } from "@/server/flicky/voice";
 import { clientIp, errorJson, readJson } from "@/server/http";
 
-// POST /api/flicky/speak  SpeakRequest → audio/wav from Kokoro-82M (TTS_URL).
-// Without Kokoro, or if it fails, answers 503 with `X-Fallback: browser` and
-// the bridge speaks with the browser's speechSynthesis instead.
+// POST /api/flicky/speak  SpeakRequest → audio/wav.
+// 503 with X-Fallback: browser tells the client to use speechSynthesis instead.
 export async function POST(request: Request) {
   if (!allow(`tts:${clientIp(request)}`)) return errorJson(429, "Too many voice requests in a minute.", { "X-Fallback": "browser" });
   const body = await readJson(request, SpeakRequestSchema);

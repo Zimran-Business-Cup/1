@@ -3,11 +3,6 @@ import { parseFlickyAnswer, type AskEvent, type AskRequest } from "@/contracts/f
 import { getPublicTask } from "@/server/tasks/store";
 import { FLICKY_SYSTEM, contextText } from "./prompt";
 
-// POST /api/flicky/ask with a real model: the Flicky prompt, an image of the
-// workspace, its anchors and the task, streamed back as SSE `chunk` events.
-// The `done` event carries the clean text and the walkthrough, with steps to
-// unknown anchors dropped.
-
 const MODEL = "claude-opus-5-5";
 const client = process.env.ANTHROPIC_API_KEY ? new Anthropic() : null;
 
@@ -55,7 +50,6 @@ export function modelAskStream(req: AskRequest, signal: AbortSignal): ReadableSt
             max_tokens: 4000,
             betas: ["server-side-fallback-2026-07-01"],
             fallbacks: "default",
-            // Byte-stable system prompt: cached across every question.
             system: [{ type: "text", text: FLICKY_SYSTEM, cache_control: { type: "ephemeral" } }],
             output_config: { effort: "low" },
             messages: [...normalizeHistory(req.history), { role: "user", content }],

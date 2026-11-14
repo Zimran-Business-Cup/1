@@ -7,11 +7,8 @@ import { userId } from "@/server/identity";
 
 export const maxDuration = 60;
 
-// POST /api/flicky/ask  AskRequest → text/event-stream of AskEvent
-// (src/contracts/flicky.ts): `chunk` events with raw text, then `done` with
-// the clean text, the walkthrough and [TYPE] requests, or `error`.
-// With ANTHROPIC_API_KEY it asks the model; without it, it streams a
-// recorded answer (header X-Flicky-Mode tells which).
+// POST /api/flicky/ask  AskRequest → SSE stream of AskEvent.
+// X-Flicky-Mode: ai with ANTHROPIC_API_KEY, demo (recorded answers) without it.
 export async function POST(request: Request) {
   if (!allow(`flicky:${clientIp(request)}`)) return errorJson(429, "Too many questions in a minute. Wait a moment and ask again.");
   const body = await readJson(request, AskRequestSchema);

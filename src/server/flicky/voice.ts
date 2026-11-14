@@ -1,7 +1,4 @@
-// Speech for Flicky. Speech-to-text: Groq Whisper (as in Flicky), key only on
-// the server. Text-to-speech: our own Kokoro-82M container (TTS_URL) instead
-// of Flicky's ElevenLabs. Each returns null when not configured, so the routes
-// can fall back (fixed question / browser voice).
+// Speech-to-text via Groq Whisper, text-to-speech via the Kokoro service (TTS_URL).
 
 const GROQ_URL = "https://api.groq.com/openai/v1/audio/transcriptions";
 const GROQ_MODEL = "whisper-large-v3-turbo";
