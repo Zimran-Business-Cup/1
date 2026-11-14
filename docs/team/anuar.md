@@ -14,9 +14,9 @@ Whole picture: [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md).
 
 ## Build order
 
-1. **Contracts PR (by 22:30).** `TutorTurn`: `stage: "interview"` replaces `"quiz"`, `task: TaskCard | null` replaces the inline exercise; move the schema into `src/contracts/tutor.ts`. Agree it with Alsheri.
-2. **Stubs (by 23:30).** `GET /api/tasks/[id]`, `POST /api/tasks/[id]/submit`, `POST /api/flicky/{transcribe,ask,speak}`, `POST /api/events` returning fixtures from `src/contracts/fixtures`. `/ask` streams `gradientAnswer`/`doublePayAnswer` as SSE.
-3. **Interview + task cards in `/api/tutor`.** Prompt and demo mentor run the interview, return a profile, then a `TaskCard` built from a seed task.
+1. ✓ **Contracts PR.** Zones, contracts, fixtures, CI.
+2. ✓ **Stubs.** Every endpoint answers with the contract shapes; design and board grading is real.
+3. ✓ **Interview + task cards in `/api/tutor`.** Interview in stage `intro` for MVP roles, `profile` on the last interview turn, `task` attached by the server, `exercise` kept for the old UI. Stage enum unchanged so `STAGE_LABEL` in the UI still compiles; move the schema into `src/contracts/tutor.ts` once Alsheri drops the quiz stage.
 4. **Self-host.** `deploy/`: Dockerfile (Next.js `output: "standalone"`), compose (`caddy`, `app`, `postgres`, `runner`, `tts`), Caddyfile with SSE passthrough, deploy workflow. Works locally with `docker compose up` before the VPS exists.
 5. **Postgres.** Schema for profiles, sessions, messages, tasks (with private parts), attempts, guide_steps, ratings, run_queue.
 6. **Runner (sync 05:30).** Hidden tests on Submit, self-check of generated tasks; limits from ARCHITECTURE §10.
