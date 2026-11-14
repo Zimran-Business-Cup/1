@@ -1,10 +1,5 @@
 import { PRICING, type CheckoutStatus } from "@/contracts/billing";
 
-// A small Stripe REST client over fetch: two calls don't justify the SDK,
-// and it keeps package-lock.json out of this change.
-// Only test keys are accepted unless STRIPE_ALLOW_LIVE=1, so a misplaced live
-// key can't charge real cards during the hackathon.
-
 const API = "https://api.stripe.com/v1";
 const COUPON_ID = "heforage-first-month-20";
 
@@ -17,6 +12,7 @@ export class StripeError extends Error {
   }
 }
 
+// Test keys only unless STRIPE_ALLOW_LIVE=1, so a misplaced live key can't charge real cards.
 export function stripeKey(): string | null {
   const key = process.env.STRIPE_SECRET_KEY?.trim();
   if (!key) return null;
@@ -52,7 +48,7 @@ async function call<T>(method: "GET" | "POST", path: string, params?: Params): P
   return data;
 }
 
-/** "$20 first month": a one-time $15 coupon on the $35 monthly price. Created once. */
+/** $20 first month: a one-time $15 coupon on the $35 price, created on first use. */
 async function ensureCoupon(): Promise<string> {
   try {
     await call("GET", `/coupons/${COUPON_ID}`);

@@ -1,12 +1,6 @@
 import { z } from "zod";
 
-// Pro subscription through Stripe Checkout (test mode).
-//   POST /api/checkout          CheckoutRequest → CheckoutResponse (redirect the browser to `url`)
-//                               503 { error, fallback: "demo" } when Stripe isn't configured:
-//                               keep the old demo upgrade in that case.
-//   GET  /api/checkout/status?session_id=cs_…   → CheckoutStatus
-// Stripe sends the learner back to `returnPath` with
-//   ?checkout=success&session_id=cs_…   or   ?checkout=cancel
+// Stripe sends the learner back to `returnPath` with ?checkout=success&session_id=cs_… or ?checkout=cancel.
 
 export const PRICING = {
   currency: "usd",

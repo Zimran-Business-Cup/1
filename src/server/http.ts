@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import type { z } from "zod";
 
-// Small helpers shared by the route handlers in src/app/api.
-
 export function errorJson(status: number, error: string, extra?: Record<string, string>) {
   return NextResponse.json({ error }, { status, headers: extra });
 }

@@ -1,0 +1,13 @@
+{
+  "name": "heforage-runner",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Runs learner code in one-off sandbox containers for hidden tests and task self-checks.",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

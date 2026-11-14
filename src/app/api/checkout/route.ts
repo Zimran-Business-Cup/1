@@ -4,9 +4,7 @@ import { allow } from "@/lib/rate-limit";
 import { StripeError, createCheckout, stripeKey } from "@/server/billing/stripe";
 import { clientIp, errorJson, readJson } from "@/server/http";
 
-// POST /api/checkout  CheckoutRequest → CheckoutResponse (src/contracts/billing.ts).
-// Without a Stripe test key it answers 503 with fallback "demo", and the UI
-// keeps its demo upgrade.
+// POST /api/checkout → CheckoutResponse. Without a Stripe key: 503 with fallback "demo".
 export async function POST(request: Request) {
   if (!allow(`checkout:${clientIp(request)}`)) return errorJson(429, "Too many checkout attempts. Wait a minute.");
   const body = await readJson(request, CheckoutRequestSchema);

@@ -1,8 +1,6 @@
 import { z } from "zod";
 
-// Everything the browser reports for metrics. POST /api/events takes one event.
-// The four learner metrics (correctness, help used, progress, interest) are
-// computed on the server from these events and from GradeResults.
+// Events the browser reports for learner metrics (POST /api/events).
 
 const base = { sessionId: z.string(), taskId: z.string().nullable() };
 

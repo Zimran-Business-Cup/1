@@ -5,8 +5,7 @@ import { errorJson } from "@/server/http";
 
 const SESSION_ID = /^cs_(test|live)_[A-Za-z0-9]+$/;
 
-// GET /api/checkout/status?session_id=cs_…  → CheckoutStatus (src/contracts/billing.ts).
-// The page calls it after Stripe redirects back, and unlocks Pro when `paid`.
+// GET /api/checkout/status?session_id=cs_… → CheckoutStatus.
 export async function GET(request: NextRequest) {
   const id = request.nextUrl.searchParams.get("session_id") ?? "";
   if (!SESSION_ID.test(id)) return errorJson(400, "Pass the Stripe session id as ?session_id=cs_…");
