@@ -60,14 +60,35 @@ export async function ask(request: AskRequest, onEvent: (event: AskEvent) => voi
   }
 }
 
-// Kokoro on the server reads one sentence in ~1.5 s, so the answer is spoken
-// sentence by sentence. If the server voice is down or slow, the browser speaks.
-const SERVER_VOICE_TIMEOUT = 3000;
+// Kokoro on our server synthesizes at about the speed of speech (1.5 s for a short
+// clause), so answers go out in short chunks: the first plays after ~2 s and each
+// next chunk is synthesized while the previous one plays. The browser voice covers
+// a chunk when the server voice fails, and the rest of the answer after two failures in a row.
+const FIRST_CHUNK = 50;
+const MAX_CHUNK = 90;
+const MAX_FAILURES = 2;
+const voiceTimeout = (chunk: string) => Math.min(15_000, 2_500 + chunk.length * 70);
 
-const sentences = (text: string) =>
-  (text.match(/[^.!?]+[.!?]+["')\]]*|[^.!?]+$/g) ?? [])
-    .map((s) => s.trim())
-    .filter(Boolean);
+/** Sentences, with long ones split after commas, semicolons, colons and dashes. */
+export function speechChunks(text: string): string[] {
+  const chunks: string[] = [];
+  for (const raw of text.match(/[^.!?]+[.!?]+["')\]]*|[^.!?]+$/g) ?? []) {
+    const sentence = raw.trim();
+    if (!sentence) continue;
+    let current = "";
+    for (const part of sentence.split(/(?<=[,;:—–])\s+/)) {
+      const limit = chunks.length ? MAX_CHUNK : FIRST_CHUNK;
+      if (current && current.length + part.length + 1 > limit) {
+        chunks.push(current);
+        current = part;
+      } else {
+        current = current ? `${current} ${part}` : part;
+      }
+    }
+    if (current) chunks.push(current);
+  }
+  return chunks;
+}
 
 export interface Speaker {
   speak(text: string): Promise<void>;
@@ -77,26 +98,25 @@ export interface Speaker {
 export function createSpeaker(): Speaker {
   let run = 0;
   let audio: HTMLAudioElement | null = null;
-  let browserOnly = false;
+  let failures = 0;
 
-  async function fetchVoice(sentence: string): Promise<Blob | null> {
-    if (browserOnly) return null;
+  async function fetchVoice(chunk: string): Promise<Blob | null> {
+    if (failures >= MAX_FAILURES) return null;
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), SERVER_VOICE_TIMEOUT);
+    const timer = setTimeout(() => controller.abort(), voiceTimeout(chunk));
     try {
       const res = await fetch("/api/flicky/speak", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: sentence.slice(0, 1500) }),
+        body: JSON.stringify({ text: chunk.slice(0, 1500) }),
         signal: controller.signal,
       });
-      if (!res.ok) {
-        if (res.status === 503 || res.headers.get("X-Fallback") === "browser") browserOnly = true;
-        return null;
-      }
-      return await res.blob();
+      if (!res.ok) throw new Error(`speak ${res.status}`);
+      const blob = await res.blob();
+      failures = 0;
+      return blob;
     } catch {
-      browserOnly = true;
+      failures++;
       return null;
     } finally {
       clearTimeout(timer);
@@ -130,11 +150,12 @@ export function createSpeaker(): Speaker {
   return {
     async speak(text: string) {
       const mine = ++run;
-      const parts = sentences(text);
+      failures = 0;
+      const parts = speechChunks(text);
       let next = parts.length ? fetchVoice(parts[0]) : null;
       for (let i = 0; i < parts.length && mine === run; i++) {
         const blob = await next;
-        // Fetch the next sentence while this one plays.
+        // Synthesize the next chunk while this one plays.
         next = i + 1 < parts.length ? fetchVoice(parts[i + 1]) : null;
         if (mine !== run) break;
         if (blob) await play(blob, mine);
