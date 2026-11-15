@@ -14,6 +14,11 @@ export const TaskCardSchema = z.object({
   workspace: WorkspaceKindSchema,
   language: CodeLanguageSchema.nullable().describe("Only for the code workspace"),
   minutes: z.number().int().positive().describe("Rough time to finish"),
+  intro: z
+    .string()
+    .nullable()
+    .optional()
+    .describe("Markdown lesson shown when the task is handed out: the idea, the syntax with a tiny example, the steps"),
 });
 
 export const TicketSchema = z.object({

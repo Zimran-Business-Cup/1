@@ -1,15 +1,11 @@
-import { passedGrade } from "@/contracts/fixtures/tasks";
 import type { Check, GradeResult, PublicTask, Submission } from "@/contracts/task";
 import { RunnerUnavailable, runInSandbox, type RunResult } from "@/server/runner/client";
 import { privateTask } from "@/server/tasks/private";
-import { getPublicTask, starterFiles } from "@/server/tasks/store";
-import { checkBoard, checkDesign, type BoardRules, type DesignRules } from "./rules";
+import { nextTaskAfter, starterFiles } from "@/server/tasks/store";
+import { checkDesign, DESIGN_RULES } from "./design-rules";
+import { checkBoard, type BoardRules } from "./rules";
 
 // `passed` is decided by code only: hidden tests for code tasks, rules.ts for design and board.
-
-const DESIGN_RULES: Record<string, DesignRules> = {
-  "design-pay-button-1": { nodeId: "pay-button", fill: "linear", radius: 12, minContrast: 4.5 },
-};
 
 const BOARD_RULES: Record<string, BoardRules> = {
   "pm-sprint-at-risk-1": { mustBeInSprint: ["fix-double-charge"], everyP0InSprint: true },
@@ -21,9 +17,16 @@ function explain(checks: Check[]): string {
   return [`${failed.length} of ${checks.length} checks failed:`, ...failed.map((c) => `- **${c.label}.** ${c.message ?? ""}`)].join("\n");
 }
 
-/** Only offer a next task the store can actually serve. */
-function nextFor(passed: boolean) {
-  return passed && passedGrade.next && getPublicTask(passedGrade.next.id) ? passedGrade.next : null;
+/** After a pass, the next rung of the task's ladder; null at the top or on a fail. */
+function nextFor(id: string, passed: boolean) {
+  return passed ? nextTaskAfter(id) : null;
+}
+
+/** Check ids and labels read from the hidden tests, for the stub grade when the sandbox is down. */
+function hiddenCheckLabels(tests: string): { id: string; label: string }[] {
+  const python = [...tests.matchAll(/def (test_\w+)\(\):\s*\n\s*"""(.+?)"""/g)].map((m) => ({ id: m[1].replace(/^test_/, ""), label: m[2] }));
+  if (python.length) return python;
+  return [...tests.matchAll(/test\("([^"]+)"/g)].map((m) => ({ id: m[1], label: m[1] }));
 }
 
 /** The learner's files laid over the starter, so a submission may send only what changed. */
@@ -56,23 +59,19 @@ async function gradeCode(task: PublicTask, submission: Submission): Promise<Grad
   if (run) {
     const checks = checksFromRun(run);
     const passed = checks.length > 0 && checks.every((c) => c.passed);
-    return { taskId: id, passed, checks, explanation: explain(checks), next: nextFor(passed) };
+    return { taskId: id, passed, checks, explanation: explain(checks), next: nextFor(id, passed) };
   }
 
   // No sandbox: say so instead of pretending the hidden tests ran.
   const starter = starterFiles(task);
   const untouched = submission.files.every((f) => starter.get(f.path) === f.content);
   const note = "(Sandbox unavailable: this is a stub grade, the hidden tests didn't run.)";
+  const stubChecks = (passed: boolean): Check[] =>
+    hiddenCheckLabels(secret.hiddenTests).map((c) => ({ ...c, passed, by: "code", message: passed ? null : "The starter code hasn't changed yet." }));
   if (untouched) {
-    return {
-      taskId: id,
-      passed: false,
-      checks: passedGrade.checks.map((c, i) => ({ ...c, passed: i === 0, message: i === 0 ? null : "The handler still creates a new payment on every request." })),
-      explanation: `The starter code hasn't changed yet. ${note}`,
-      next: null,
-    };
+    return { taskId: id, passed: false, checks: stubChecks(false), explanation: `The starter code hasn't changed yet. ${note}`, next: null };
   }
-  return { ...passedGrade, taskId: id, next: nextFor(true), explanation: `${passedGrade.explanation} ${note}` };
+  return { taskId: id, passed: true, checks: stubChecks(true), explanation: `Every check passed. ${note}`, next: nextFor(id, true) };
 }
 
 export async function gradeSubmission(task: PublicTask, submission: Submission): Promise<GradeResult | { error: string }> {
@@ -85,7 +84,8 @@ export async function gradeSubmission(task: PublicTask, submission: Submission):
     const rules = DESIGN_RULES[id];
     if (!rules) return { error: `No grading rules for task ${id}.` };
     const checks = checkDesign(submission.scene, rules);
-    return { taskId: id, passed: checks.every((c) => c.passed), checks, explanation: explain(checks), next: null };
+    const passed = checks.every((c) => c.passed);
+    return { taskId: id, passed, checks, explanation: explain(checks), next: nextFor(id, passed) };
   }
 
   if (!submission.board) return { error: "A board submission needs `board` and `report`." };

@@ -29,6 +29,17 @@ export const ProfileSchema = z.object({
   tools: z.array(z.string()).describe("Languages or tools they've tried for this role; empty if none"),
   hoursPerWeek: z.number().nullable().describe("Hours a week they can practice, if they said"),
   goal: z.string().describe("What they want to find out or reach"),
+  startLanguage: z
+    .enum(["python", "javascript"])
+    .nullable()
+    .describe("Programming roles: the language they chose to start with; 'Not sure yet' means python. Null in other roles"),
+  codingLevel: z
+    .enum(["new", "some", "comfortable"])
+    .nullable()
+    .describe(
+      "Programming roles: new = never wrote code; some = tried tutorials or small scripts; " +
+        "comfortable = writes code at work or has coded for a job. Null in other roles",
+    ),
 });
 
 // Written by the model or by the offline demo mentor.

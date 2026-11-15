@@ -1,7 +1,7 @@
 import type { DirectionId, Profession } from "@/lib/catalog";
 import type { PublicTask } from "@/contracts/task";
-import { seedTaskFor } from "@/server/tasks/store";
-import type { Exercise, MentorTurn, TutorRequest } from "./schema";
+import { seedTaskFor, startTaskFor } from "@/server/tasks/store";
+import type { Exercise, MentorTurn, Profile, TutorRequest } from "./schema";
 
 // Offline demo mentor, used when no ANTHROPIC_API_KEY is configured.
 // It follows the same protocol as the Claude mentor and reacts to the
@@ -194,7 +194,7 @@ function turn(partial: Partial<MentorTurn> & Pick<MentorTurn, "message" | "stage
 // Interview for roles with a seed task.
 
 const TOOLS: Record<DirectionId, { q: string; options: string[] }> = {
-  programming: { q: "Which languages or tools have you tried?", options: ["Python", "JavaScript", "Some SQL", "Nothing yet"] },
+  programming: { q: "Which language would you like to start with?", options: ["Python", "JavaScript", "Not sure yet"] },
   design: { q: "Which design tools have you used?", options: ["Figma", "Canva or similar", "Nothing yet"] },
   management: { q: "Have you planned or led work before?", options: ["I've led projects", "I've worked in sprints", "Nothing like that yet"] },
 };
@@ -203,12 +203,12 @@ const GOALS = ["See if I'd like this job", "Switch careers this year", "Just cur
 const LEVELS = ["Complete beginner", "Some basics", "Junior-ready basics", "Hands-on experience"];
 
 const PRAISE: Record<PublicTask["card"]["workspace"], string> = {
-  code: "You look up the payment by its key before creating one, which is exactly what idempotency means.",
+  code: "Your code passes every hidden check, including the edge cases from the ticket.",
   design: "You tied each change to the design-system rule, which is how design reviews go.",
   board: "You put the urgent fix first and said exactly what you need from the stakeholder.",
 };
 const HINT: Record<PublicTask["card"]["workspace"], string> = {
-  code: "Look at `handle_pay`: it creates a payment before checking the key. First look for an existing payment with the same key; if there is one, return it.",
+  code: "Start from the TODO in the file: that's where your change goes. Go through the ticket's \"Done when\" list one line at a time, and press Run after each change to see which check still fails.",
   design: "Select the button, open the fill type and pick a linear gradient. Then set the corner radius to 12 and check the text still reads well.",
   board: "Add up the sprint points first: it's over capacity. Move a P2 out, take the P0 fix in, then write the status, the risk with a date, and your ask.",
 };
@@ -236,17 +236,22 @@ function demoInterview(p: Profession, req: TutorRequest, seed: PublicTask): Ment
   if (answers.length === 4) {
     const hours = Number(answers[2].match(/\d+/)?.[0]);
     const noTools = answers[1] === tools.options[tools.options.length - 1];
+    const programming = p.direction === "programming";
+    const profile: Profile = {
+      currentJob: exp >= 0 ? "Not stated" : answers[0],
+      experience: answers[0],
+      tools: noTools ? [] : [answers[1]],
+      hoursPerWeek: Number.isFinite(hours) ? hours : null,
+      goal: answers[3],
+      startLanguage: programming ? (answers[1] === "JavaScript" ? "javascript" : "python") : null,
+      codingLevel: programming ? (exp <= 0 ? "new" : exp === 1 ? "some" : "comfortable") : null,
+    };
+    const first = startTaskFor(p.slug, profile) ?? seed;
     return turn({
-      message: `Thanks, that's all I need. Your starting point: **${level}**.\n\nYour first task is **${seed.card.title}**: ${seed.card.summary} It opens with the real tool, the way a junior gets it in week one. I'm here if you get stuck.`,
+      message: `Thanks, that's all I need. Your starting point: **${level}**.\n\nYour first task is **${first.card.title}**: ${first.card.summary} It opens with the real tool, the way a junior gets it in week one. I'm here if you get stuck.`,
       stage: "tasks",
       level,
-      profile: {
-        currentJob: exp >= 0 ? "Not stated" : answers[0],
-        experience: answers[0],
-        tools: noTools ? [] : [answers[1]],
-        hoursPerWeek: Number.isFinite(hours) ? hours : null,
-        goal: answers[3],
-      },
+      profile,
     });
   }
 
