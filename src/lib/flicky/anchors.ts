@@ -71,6 +71,23 @@ export function anchorRect(id: string): DOMRect | null {
   return el.getBoundingClientRect();
 }
 
+type Area = { x: number; y: number; width: number; height: number };
+
+const overlaps = (r: DOMRect, a: Area) => r.width > 0 && r.right > a.x && r.left < a.x + a.width && r.bottom > a.y && r.top < a.y + a.height;
+
+/** Ids of the anchors on screen that overlap `area`, without scrolling anything into view. */
+export function anchorsIn(area: Area): string[] {
+  const ids = new Set<string>();
+  for (const el of document.querySelectorAll<HTMLElement>("[data-anchor]")) {
+    const id = el.dataset.anchor ?? "";
+    if (ANCHOR_ID.test(id) && visible(el) && overlaps(el.getBoundingClientRect(), area)) ids.add(id);
+  }
+  editorLines().forEach((line, i) => {
+    if (overlaps(line.getBoundingClientRect(), area)) ids.add(`code.lines.${i + 1}`);
+  });
+  return [...ids].slice(0, 100);
+}
+
 /** Right edge of a line's text, so the highlight hugs the code. */
 function textRight(line: HTMLElement): number {
   const range = document.createRange();

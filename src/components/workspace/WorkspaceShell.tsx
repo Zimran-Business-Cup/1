@@ -73,7 +73,7 @@ export function WorkspaceShell({
   const show = (p: Pane) => (pane === p ? "flex" : "hidden");
 
   return (
-    <div ref={root} tabIndex={-1} role="dialog" aria-modal="true" aria-label={`Task ${number}: ${card.title}`} className="ws fixed inset-0 z-40 flex flex-col bg-hero outline-none">
+    <div ref={root} data-snapshot-root tabIndex={-1} role="dialog" aria-modal="true" aria-label={`Task ${number}: ${card.title}`} className="ws fixed inset-0 z-40 flex flex-col bg-hero outline-none">
       <DotGrid subtle />
 
       <header className="relative flex items-center gap-3 px-3 py-3 text-paper sm:px-4">

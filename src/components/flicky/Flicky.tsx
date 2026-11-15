@@ -3,16 +3,19 @@
 import { ArrowRight, AudioLines, Mic, MousePointer2, Send, Square, Volume2, VolumeX, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
-import { stripTags, type WalkthroughStep } from "@/contracts/flicky";
+import { dwellMs, pointToViewport, stripTags, type Focus, type Snapshot, type WalkthroughStep } from "@/contracts/flicky";
 import type { WorkspaceKind } from "@/contracts/workspace";
 import { postEvent } from "@/lib/api";
 import { anchorRect, collectAnchors } from "@/lib/flicky/anchors";
 import { ask, createSpeaker, FlickyError, transcribe, type Speaker } from "@/lib/flicky/client";
 import { MicError, startRecording, type Recording } from "@/lib/flicky/recorder";
+import { focusFromPath, snapshotWithCircle } from "@/lib/flicky/snapshot";
 
-// Flicky: hold Ctrl+Alt+X (⌃⌥X on a Mac), ask out loud, let go. The answer is
-// spoken, and a cursor walks through the steps on screen; each step waits for
-// a click on its target. A typed question works the same way without a mic.
+// Flicky: hold Ctrl+Alt+X (⌃⌥X on a Mac), ask out loud, let go. Moving the mouse
+// while the keys are held circles what the question is about; that area goes to
+// the model as a picture with the circle on it. The answer is spoken, and the
+// cursor walks through the steps on its own (a click on the target moves on
+// sooner). A typed question works the same way without a mic.
 
 type Phase = "idle" | "listening" | "transcribing" | "thinking" | "answering";
 type Point = { x: number; y: number };
@@ -23,6 +26,14 @@ const MIN_SECONDS = 0.4;
 const MAX_SECONDS = 30;
 
 const isMac = () => /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+
+/** Where a step points: an anchor, or a pixel target in the last snapshot. */
+function rectFor(target: WalkthroughStep["target"], snap: Snapshot | null): DOMRect | null {
+  if (target.kind === "anchor") return anchorRect(target.anchorId);
+  if (!snap) return null;
+  const p = pointToViewport(target, snap);
+  return new DOMRect(p.x - 20, p.y - 20, 40, 40);
+}
 
 function readHintSeen(): boolean {
   try {
@@ -72,6 +83,8 @@ export function Flicky({ sessionId, taskId, workspace }: { sessionId: string; ta
   const [muted, setMuted] = useState(false);
   const [typed, setTyped] = useState("");
   const [viaKeys, setViaKeys] = useState(false);
+  const [circle, setCircle] = useState<Point[] | null>(null);
+  const [circled, setCircled] = useState(false);
 
   const pill = useRef<HTMLButtonElement>(null);
   const recording = useRef<Recording | null>(null);
@@ -83,6 +96,11 @@ export function Flicky({ sessionId, taskId, workspace }: { sessionId: string; ta
   const cursorRef = useRef<Point | null>(null);
   const maxTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const viaKeysRef = useRef(false);
+  const circling = useRef(false);
+  const path = useRef<Point[]>([]);
+  const frame = useRef(0);
+  const pendingFocus = useRef<{ focus: Focus; snapshot: Promise<Snapshot | null> } | null>(null);
+  const snap = useRef<Snapshot | null>(null);
 
   const speaker = () => (speakerRef.current ??= createSpeaker());
   const go = (p: Phase) => {
@@ -129,8 +147,7 @@ export function Flicky({ sessionId, taskId, workspace }: { sessionId: string; ta
   /** Moves to the first step from `from` whose target is on screen; past the end, the cursor leaves. */
   const showStep = useCallback((list: WalkthroughStep[], from: number) => {
     for (let i = from; i < list.length; i++) {
-      const t = list[i].target;
-      const rect = t.kind === "anchor" ? anchorRect(t.anchorId) : null;
+      const rect = rectFor(list[i].target, snap.current);
       if (!rect) continue;
       setStepIndex(i);
       setTarget(rect);
@@ -154,6 +171,9 @@ export function Flicky({ sessionId, taskId, workspace }: { sessionId: string; ta
     async (q: string) => {
       const text = q.trim();
       if (!text) return;
+      const pending = pendingFocus.current;
+      pendingFocus.current = null;
+      setCircled(false);
       halt();
       clearWalkthrough();
       setPanelOpen(true);
@@ -165,8 +185,20 @@ export function Flicky({ sessionId, taskId, workspace }: { sessionId: string; ta
       abort.current = controller;
       let raw = "";
       try {
+        const snapshot = pending ? await Promise.race([pending.snapshot, new Promise<null>((r) => setTimeout(() => r(null), 3000))]) : null;
+        if (controller.signal.aborted) return;
+        snap.current = snapshot;
         await ask(
-          { sessionId, taskId, workspace, question: text, anchors: collectAnchors(), snapshot: null, history: history.current.slice(-6) },
+          {
+            sessionId,
+            taskId,
+            workspace,
+            question: text,
+            anchors: collectAnchors(),
+            snapshot,
+            focus: pending?.focus ?? null,
+            history: history.current.slice(-6),
+          },
           (event) => {
             if (controller.signal.aborted) return;
             if (event.type === "chunk") {
@@ -175,6 +207,7 @@ export function Flicky({ sessionId, taskId, workspace }: { sessionId: string; ta
               if (phaseRef.current === "thinking") go("answering");
             } else if (event.type === "done") {
               go("answering");
+              setCircle(null);
               setAnswer(event.text);
               history.current.push({ role: "user", content: text }, { role: "assistant", content: event.text });
               const list = event.walkthrough?.steps ?? [];
@@ -183,6 +216,7 @@ export function Flicky({ sessionId, taskId, workspace }: { sessionId: string; ta
               if (!muted && event.text) void speaker().speak(event.text);
               postEvent({ type: "hint", sessionId, taskId, source: "flicky", steps: list.length });
             } else if (event.type === "error") {
+              setCircle(null);
               setError(event.message);
             }
           },
@@ -190,6 +224,7 @@ export function Flicky({ sessionId, taskId, workspace }: { sessionId: string; ta
         );
       } catch (err) {
         if (controller.signal.aborted) return;
+        setCircle(null);
         setError(err instanceof FlickyError ? err.message : "Flicky couldn't answer right now. Try again.");
         go("idle");
       }
@@ -265,9 +300,27 @@ export function Flicky({ sessionId, taskId, workspace }: { sessionId: string; ta
     [clearWalkthrough, halt, stopListening],
   );
 
+  /** Keys released: keep the circle if the learner drew around something. */
+  const finishCircle = useCallback(() => {
+    circling.current = false;
+    cancelAnimationFrame(frame.current);
+    const points = path.current;
+    const focus = focusFromPath(points);
+    if (!focus) {
+      setCircle(null);
+      return;
+    }
+    setCircle([...points]);
+    setCircled(true);
+    pendingFocus.current = { focus, snapshot: snapshotWithCircle(points) };
+  }, []);
+
   const close = useCallback(() => {
     halt();
     clearWalkthrough();
+    pendingFocus.current = null;
+    setCircle(null);
+    setCircled(false);
     setPanelOpen(false);
     setError(null);
   }, [clearWalkthrough, halt]);
@@ -278,7 +331,13 @@ export function Flicky({ sessionId, taskId, workspace }: { sessionId: string; ta
       if (e.ctrlKey && e.altKey && e.code === "KeyX") {
         e.preventDefault();
         e.stopPropagation();
-        if (!e.repeat) void startListening(true);
+        if (e.repeat) return;
+        circling.current = true;
+        path.current = [];
+        pendingFocus.current = null;
+        setCircle(null);
+        setCircled(false);
+        void startListening(true);
       } else if (e.key === "Escape" && document.querySelector("[data-flicky-open]")) {
         // Keep the workspace open: this Esc only closes Flicky.
         e.stopPropagation();
@@ -286,9 +345,10 @@ export function Flicky({ sessionId, taskId, workspace }: { sessionId: string; ta
       }
     };
     const up = (e: KeyboardEvent) => {
-      if (phaseRef.current === "listening" && viaKeysRef.current && (e.code === "KeyX" || e.key === "Control" || e.key === "Alt")) {
-        void stopListening();
-      }
+      if (e.code !== "KeyX" && e.key !== "Control" && e.key !== "Alt") return;
+      // Before stopListening: the question that follows takes the circle with it.
+      if (circling.current) finishCircle();
+      if (phaseRef.current === "listening" && viaKeysRef.current) void stopListening();
     };
     window.addEventListener("keydown", down, true);
     window.addEventListener("keyup", up, true);
@@ -296,9 +356,31 @@ export function Flicky({ sessionId, taskId, workspace }: { sessionId: string; ta
       window.removeEventListener("keydown", down, true);
       window.removeEventListener("keyup", up, true);
     };
-  }, [close, startListening, stopListening]);
+  }, [close, finishCircle, startListening, stopListening]);
 
-  // A step moves on when the learner clicks its target; the cursor follows layout changes.
+  // While the keys are held, moving the pointer draws the circle.
+  useEffect(() => {
+    const move = (e: PointerEvent) => {
+      if (!circling.current || path.current.length > 2000) return;
+      const last = path.current[path.current.length - 1];
+      if (last && Math.hypot(e.clientX - last.x, e.clientY - last.y) < 4) return;
+      path.current.push({ x: e.clientX, y: e.clientY });
+      cancelAnimationFrame(frame.current);
+      frame.current = requestAnimationFrame(() => setCircle([...path.current]));
+    };
+    window.addEventListener("pointermove", move);
+    return () => window.removeEventListener("pointermove", move);
+  }, []);
+
+  // The cursor moves through the steps on its own; longer captions stay longer.
+  useEffect(() => {
+    const current = steps[stepIndex];
+    if (!target || !current) return;
+    const timer = setTimeout(() => showStep(steps, stepIndex + 1), dwellMs(current.label));
+    return () => clearTimeout(timer);
+  }, [showStep, stepIndex, steps, target]);
+
+  // A click on the target moves on sooner; the cursor follows layout changes.
   useEffect(() => {
     if (!target) return;
     const current = steps[stepIndex];
@@ -355,7 +437,7 @@ export function Flicky({ sessionId, taskId, workspace }: { sessionId: string; ta
   const status =
     phase === "listening"
       ? viaKeys
-        ? "Listening… let go of the keys when you're done"
+        ? "Listening… circle what you mean, let go when done"
         : "Listening… press stop when you're done"
       : phase === "transcribing"
         ? "Got it, writing that down…"
@@ -391,7 +473,7 @@ export function Flicky({ sessionId, taskId, workspace }: { sessionId: string; ta
             Stuck? Just ask out loud
           </p>
           <p className="mt-3 text-[15px] leading-relaxed text-ink-soft">
-            Hold <Keys mac={mac} />, say your question, then let go. Space answers out loud and points at the right spot on your screen.
+            Hold <Keys mac={mac} />, say your question and circle the spot with your mouse, then let go. Space answers out loud and walks the cursor through the steps.
           </p>
           <div className="mt-4 flex gap-2">
             <button onClick={() => void startListening(false)} className="flex items-center gap-1.5 rounded-full bg-hero px-4 py-2 text-sm font-semibold text-paper transition hover:bg-hero-deep">
@@ -470,6 +552,7 @@ export function Flicky({ sessionId, taskId, workspace }: { sessionId: string; ta
                   )}
 
                   {error && <p role="alert" className="mt-3 rounded-2xl bg-rose-wash px-4 py-3 text-[15px] leading-snug text-rose">{error}</p>}
+                  {circled && <p className="mt-3 rounded-2xl bg-rose-wash px-4 py-2.5 text-sm font-semibold text-rose">The circled area goes with your question.</p>}
                 </div>
 
                 <form onSubmit={submitTyped} className="flex items-center gap-2 border-t border-line px-3 py-3">
@@ -487,6 +570,18 @@ export function Flicky({ sessionId, taskId, workspace }: { sessionId: string; ta
               </section>
             )}
 
+            {circle && circle.length > 1 && (
+              <svg aria-hidden className="pointer-events-none fixed inset-0 z-[59] h-full w-full">
+                <polyline
+                  points={circle.map((p) => `${p.x},${p.y}`).join(" ")}
+                  fill="rgb(232 56 79 / 0.07)"
+                  stroke="var(--color-rose)"
+                  strokeWidth={4}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            )}
             {target && (
               <div
                 aria-hidden

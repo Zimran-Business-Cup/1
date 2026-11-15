@@ -1,7 +1,7 @@
 // Adapted from Flicky (https://github.com/pango07/flicky), src/main/services/prompts.ts
 // Copyright (c) 2026 Julio Vaught and Flicky contributors. MIT License, see third_party/flicky/LICENSE.
 
-import type { Anchor } from "@/contracts/flicky";
+import type { Anchor, Focus } from "@/contracts/flicky";
 import type { PublicTask } from "@/contracts/task";
 
 export const FLICKY_SYSTEM = `you are space, a friendly voice helper that lives inside 1ry-space (if asked, your name is Space), a site where adults switching careers try the real work of a junior. you sit on top of the learner's workspace (a code editor, a design canvas, or a sprint board) and help them with the task in front of them.
@@ -46,8 +46,14 @@ when the user explicitly asks you to type, fill in or draft text into a field, u
 never use markdown formatting. speak naturally like a friend: your answer is read aloud.
 tone: casual, warm, concise. 1-2 sentences unless the user asks you to elaborate. never use abbreviations or lists. always reply in english, even when the user writes or speaks another language: the voice only speaks english.`;
 
-/** The text part of the user turn: task context, anchors, then the question. */
-export function contextText(question: string, anchors: Anchor[], task: PublicTask | null, image: { width: number; height: number } | null): string {
+/** The text part of the user turn: task context, anchors, the circled area, then the question. */
+export function contextText(
+  question: string,
+  anchors: Anchor[],
+  task: PublicTask | null,
+  image: { width: number; height: number } | null,
+  focus?: Focus | null,
+): string {
   const parts: string[] = [];
   if (task) {
     parts.push(
@@ -65,6 +71,13 @@ export function contextText(question: string, anchors: Anchor[], task: PublicTas
         : "ANCHORS: none on this screen.",
   );
   if (!image) parts.push("NO IMAGE this time: you can't see the screen, so point only at ANCHORS and never use pixel POINT tags.");
+  if (focus) {
+    const inside = focus.anchorIds.length ? focus.anchorIds.map((id) => `#${id}`).join(", ") : "no anchors";
+    parts.push(
+      `CIRCLED: while asking, the learner circled an area of the screen${image ? " (outlined in red on the image)" : ""}. ` +
+        `inside it: ${inside}. the question is about this area: answer about it and point inside it first.`,
+    );
+  }
   parts.push(`QUESTION: ${question}`);
   return parts.join("\n\n");
 }
