@@ -81,6 +81,8 @@ export async function createCheckout(origin: string, returnPath: string): Promis
       },
     ],
     discounts: [{ coupon: await ensureCoupon() }],
+    // Prices are for the US: keep them in dollars instead of the visitor's local currency.
+    adaptive_pricing: { enabled: false },
     // Stripe fills in {CHECKOUT_SESSION_ID}; the page checks it with /api/checkout/status.
     success_url: back("checkout=success&session_id={CHECKOUT_SESSION_ID}"),
     cancel_url: back("checkout=cancel"),
