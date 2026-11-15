@@ -8,7 +8,7 @@ import { getTask, submitTask } from "@/lib/api";
 import type { Profession } from "@/lib/catalog";
 import { roleName } from "@/lib/features";
 import { getPlan, loadSession, newId, newSession, saveSession, setPlan, type ChatItem, type Session } from "@/lib/sessions";
-import type { Stage, TutorTurn } from "@/lib/tutor/schema";
+import type { TutorTurn } from "@/lib/tutor/schema";
 import { CatalogModal } from "../CatalogModal";
 import { DotGrid } from "../DotGrid";
 import { Flicky } from "../flicky/Flicky";
@@ -21,14 +21,6 @@ import { ChatThread, taskCards } from "./ChatThread";
 import { Composer } from "./Composer";
 import { Paywall } from "./Paywall";
 import { Sidebar } from "./Sidebar";
-
-const STAGE_LABELS: Record<Stage, string> = {
-  intro: "Interview",
-  quiz: "Quiz",
-  tasks: "Tasks",
-  fit: "Fit check",
-  done: "Verdict",
-};
 
 const SIDEBAR_KEY = "1ry-space:sidebar";
 const isDesktop = () => window.matchMedia("(min-width: 1024px)").matches;
@@ -254,9 +246,6 @@ export function SessionView({ profession }: { profession: Profession }) {
 
   // ---------- render ----------
 
-  const usesQuiz = session.items.some((i) => i.turn?.stage === "quiz");
-  const stages: Stage[] = usesQuiz ? ["intro", "quiz", "tasks", "fit", "done"] : ["intro", "tasks", "fit", "done"];
-  const stageIndex = stages.indexOf(session.stage);
 
   const threadProps = {
     profession,
@@ -299,14 +288,6 @@ export function SessionView({ profession }: { profession: Profession }) {
           <RoleIcon slug={profession.slug} size={40} />
           <div className="min-w-0">
             <h1 className="truncate text-lg font-bold tracking-[-0.02em]">{roleName(profession)}</h1>
-            <ol className="flex flex-wrap gap-x-3 text-sm" aria-label="Session progress">
-              {stages.map((s, i) => (
-                <li key={s} aria-current={i === stageIndex ? "step" : undefined} className={i < stageIndex ? "text-mint" : i === stageIndex ? "font-semibold text-hero" : "text-ink-soft/60"}>
-                  {i < stageIndex ? "✓ " : ""}
-                  {STAGE_LABELS[s]}
-                </li>
-              ))}
-            </ol>
           </div>
         </header>
 
