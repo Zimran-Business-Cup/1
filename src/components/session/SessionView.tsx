@@ -4,7 +4,7 @@ import { PanelLeft } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { GradeResult, PublicTask, Submission, TaskCard } from "@/contracts/task";
 import { DesignSceneSchema, type DesignScene } from "@/contracts/workspace";
-import { getTask, submitTask } from "@/lib/api";
+import { checkoutStatus, getTask, startCheckout, submitTask } from "@/lib/api";
 import type { Profession } from "@/lib/catalog";
 import { roleName } from "@/lib/features";
 import { getPlan, loadSession, newId, newSession, saveSession, setPlan, type ChatItem, type Session } from "@/lib/sessions";
@@ -84,6 +84,7 @@ export function SessionView({ profession }: { profession: Profession }) {
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [plan, setPlanState] = useState<"free" | "pro">(() => getPlan());
+  const [checkout, setCheckout] = useState<{ busy: boolean; error: string | null }>({ busy: false, error: null });
   const [sidebarOpen, setSidebarOpen] = useState(initialSidebarOpen);
   const [open, setOpen] = useState<OpenTask | null>(null);
   const bottom = useRef<HTMLDivElement>(null);
@@ -190,11 +191,37 @@ export function SessionView({ profession }: { profession: Profession }) {
     retry(next);
   }
 
-  function upgrade() {
-    setPlan("pro");
-    setPlanState("pro");
-    setPaywallOpen(false);
+  async function upgrade() {
+    setCheckout({ busy: true, error: null });
+    try {
+      const url = await startCheckout(location.pathname);
+      if (url) return location.assign(url);
+      // No Stripe key on this server: the demo upgrade.
+      setPlan("pro");
+      setPlanState("pro");
+      setPaywallOpen(false);
+    } catch (error) {
+      setCheckout({ busy: false, error: error instanceof Error ? error.message : "Checkout failed. Try again." });
+      return;
+    }
+    setCheckout({ busy: false, error: null });
   }
+
+  // Stripe sends the learner back with ?checkout=success&session_id=… or ?checkout=cancel.
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (!params.has("checkout")) return;
+    history.replaceState(null, "", location.pathname);
+    const id = params.get("session_id");
+    if (params.get("checkout") !== "success" || !id) return;
+    checkoutStatus(id)
+      .then(({ paid }) => {
+        if (!paid) return;
+        setPlan("pro");
+        setPlanState("pro");
+      })
+      .catch(() => {});
+  }, []);
 
   function restart() {
     const fresh = newSession(profession.slug);
@@ -369,7 +396,7 @@ export function SessionView({ profession }: { profession: Profession }) {
       )}
 
       <CatalogModal view={catalogOpen ? "all" : null} onClose={() => setCatalogOpen(false)} />
-      <Paywall open={paywallOpen} onClose={() => setPaywallOpen(false)} onUpgrade={upgrade} />
+      <Paywall open={paywallOpen} onClose={() => setPaywallOpen(false)} onUpgrade={upgrade} busy={checkout.busy} error={checkout.error} />
     </div>
   );
 }

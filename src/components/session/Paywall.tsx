@@ -4,7 +4,15 @@ import { useEffect, useRef } from "react";
 
 const PERKS = ["Every task in every role", "Unlimited sessions side by side", "Personal path to job-ready", "Portfolio project reviewed by your mentor"];
 
-export function Paywall({ open, onClose, onUpgrade }: { open: boolean; onClose: () => void; onUpgrade: () => void }) {
+interface PaywallProps {
+  open: boolean;
+  onClose: () => void;
+  onUpgrade: () => void;
+  busy?: boolean;
+  error?: string | null;
+}
+
+export function Paywall({ open, onClose, onUpgrade, busy = false, error = null }: PaywallProps) {
   const dialog = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -40,10 +48,19 @@ export function Paywall({ open, onClose, onUpgrade }: { open: boolean; onClose: 
             </li>
           ))}
         </ul>
-        <button onClick={onUpgrade} className="mt-7 w-full rounded-full bg-ink py-4 text-lg font-semibold text-paper transition hover:bg-ink/85">
-          Start Pro for $20
+        <button
+          onClick={onUpgrade}
+          disabled={busy}
+          className="mt-7 w-full rounded-full bg-ink py-4 text-lg font-semibold text-paper transition hover:bg-ink/85 disabled:opacity-60"
+        >
+          {busy ? "Opening checkout…" : "Start Pro for $20"}
         </button>
-        <p className="mt-3 text-center text-sm text-ink-soft">Demo checkout: no card is charged.</p>
+        {error && (
+          <p role="alert" className="mt-3 text-center text-sm text-red-600">
+            {error}
+          </p>
+        )}
+        <p className="mt-3 text-center text-sm text-ink-soft">Stripe test mode: no real card is charged. Pay with 4242 4242 4242 4242, any future date and CVC.</p>
         <button onClick={onClose} className="mt-2 w-full rounded-full py-3 font-semibold text-ink-soft hover:bg-mist">
           Not now
         </button>

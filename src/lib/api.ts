@@ -1,5 +1,6 @@
 "use client";
 
+import { CheckoutResponseSchema, CheckoutStatusSchema, type CheckoutStatus } from "@/contracts/billing";
 import type { AppEvent } from "@/contracts/events";
 import { GradeResultSchema, PublicTaskSchema, type GradeResult, type PublicTask, type Submission } from "@/contracts/task";
 
@@ -57,4 +58,24 @@ export function postEvent(event: AppEvent): void {
     body: JSON.stringify(event),
     keepalive: true,
   }).catch(() => {});
+}
+
+/** POST /api/checkout → Stripe's checkout page, or null when the server has no Stripe key (demo upgrade). */
+export async function startCheckout(returnPath: string): Promise<string | null> {
+  try {
+    const body = await call("/api/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ returnPath }),
+    });
+    return CheckoutResponseSchema.parse(body).url;
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 503) return null;
+    throw error;
+  }
+}
+
+/** GET /api/checkout/status after Stripe sends the learner back. */
+export async function checkoutStatus(sessionId: string): Promise<CheckoutStatus> {
+  return CheckoutStatusSchema.parse(await call(`/api/checkout/status?session_id=${encodeURIComponent(sessionId)}`));
 }
