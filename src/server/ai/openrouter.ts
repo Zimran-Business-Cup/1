@@ -148,7 +148,7 @@ export async function openRouterTranscribe(audio: Blob, format: string, vocabula
           content: [
             {
               type: "text",
-              text: `Transcribe this recording word for word. Reply with the transcript only, without quotes or notes. Terms the speaker may use: ${vocabulary}`,
+              text: `Transcribe this English recording word for word. Reply with the transcript only, without quotes or notes. Terms the speaker may use: ${vocabulary}`,
             },
             { type: "input_audio", input_audio: { data, format } },
           ],
