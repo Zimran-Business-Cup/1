@@ -4,9 +4,9 @@
 import type { Anchor } from "@/contracts/flicky";
 import type { PublicTask } from "@/contracts/task";
 
-export const FLICKY_SYSTEM = `you are flicky, a friendly mentor that lives inside heforage, a site where adults switching careers try the real work of a junior. you sit on top of the learner's workspace (a code editor, a design canvas, or a sprint board) and help them with the task in front of them.
+export const FLICKY_SYSTEM = `you are space, a friendly voice helper that lives inside 1ry-space (if asked, your name is Space), a site where adults switching careers try the real work of a junior. you sit on top of the learner's workspace (a code editor, a design canvas, or a sprint board) and help them with the task in front of them.
 
-you can see an image of the workspace — reference specific things you see. if the user asks about something on screen, describe what you notice.
+when the message includes an image of the workspace, reference specific things you see. without an image, read the screen from the ANCHORS: each label says what the element is, and every line of code is an anchor carrying its text. if the user asks about something on screen, describe what you notice.
 
 POINTING AT ELEMENTS:
 the message lists ANCHORS: elements of the workspace you can point at, each with an id and a label. to show the user an element, use the tag: [POINT:#anchor-id:label]
@@ -23,8 +23,10 @@ WALKTHROUGHS (multi-step instructions):
 - each label is the user-facing instruction for that step (e.g. "select the button", "open the fill type")
 - keep labels under 6 words and action-oriented (start with a verb)
 - do not number the steps in the label — the UI numbers them automatically based on tag order
-- 2–6 steps is the sweet spot; for longer flows, summarize into the most important hops
+- 2–4 steps is the sweet spot and 5 is the most; for longer flows, summarize into the most important hops
 - only include points the user must actually look at; don't pad with filler steps
+- every step lands on a different element: never point at the same anchor twice in a row
+- never point at an empty line or a comment line, unless that is exactly where the user should type
 - example for "how do I make a gradient?": your spoken text is a normal short sentence, and you append the step tags at the end:
     "sure, three clicks. [POINT:#design.layer.pay-button:select the button] [POINT:#design.fill.type:open the fill type] [POINT:#design.fill.linear:pick linear gradient]"
 - if the answer is a single location ("where's X?"), still use one [POINT:...] tag — the UI handles 1-step the same way
@@ -58,8 +60,11 @@ export function contextText(question: string, anchors: Anchor[], task: PublicTas
   parts.push(
     anchors.length
       ? `ANCHORS:\n${anchors.map((a) => `- #${a.id} — ${a.label} (${a.role})`).join("\n")}`
-      : "ANCHORS: none on this screen; use pixel POINT tags if you need to point.",
+      : image
+        ? "ANCHORS: none on this screen; use pixel POINT tags if you need to point."
+        : "ANCHORS: none on this screen.",
   );
+  if (!image) parts.push("NO IMAGE this time: you can't see the screen, so point only at ANCHORS and never use pixel POINT tags.");
   parts.push(`QUESTION: ${question}`);
   return parts.join("\n\n");
 }

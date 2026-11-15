@@ -1,9 +1,10 @@
 "use client";
 
+import type { GradeResult } from "@/contracts/task";
 import type { Stage, TutorTurn } from "./tutor/schema";
 
-// Session storage in the browser for now (no login). The shape is what a
-// Supabase table will hold later; only this module needs to change.
+// Session storage in the browser for now (no login); the server keeps
+// profiles and attempts in Postgres. Only this module touches localStorage.
 
 export interface ChatItem {
   id: string;
@@ -11,7 +12,9 @@ export interface ChatItem {
   /** What the API sees: plain text for the learner, turn JSON for the mentor. */
   content: string;
   turn?: TutorTurn;
-  submission?: { passed: boolean; kind: "python" | "javascript" | "written" };
+  submission?: { passed: boolean; kind: "python" | "javascript" | "written" | "design" };
+  /** A verdict from POST /api/tasks/:id/submit, shown as a result card. */
+  grade?: GradeResult;
 }
 
 export interface Session {
@@ -23,6 +26,8 @@ export interface Session {
   level: string | null;
   stage: Stage;
   mode: "ai" | "demo" | null;
+  /** The learner's unsent work per task id: file path → content (a design keeps its scene as "scene.json"). */
+  drafts?: Record<string, Record<string, string>>;
 }
 
 interface Store {
@@ -30,7 +35,7 @@ interface Store {
   plan: "free" | "pro";
 }
 
-const KEY = "heforage:v1";
+const KEY = "1ry-space:v1";
 const EMPTY: Store = { sessions: {}, plan: "free" };
 
 function read(): Store {
@@ -48,7 +53,7 @@ function write(store: Store) {
   } catch {
     // Private mode or full storage: the session still works until reload.
   }
-  window.dispatchEvent(new Event("heforage:store"));
+  window.dispatchEvent(new Event("1ry-space:store"));
 }
 
 export const newId = () => Math.random().toString(36).slice(2, 10);
@@ -91,10 +96,10 @@ export function setPlan(plan: Store["plan"]) {
 /** Re-render on any store change, in this tab or another. */
 export function subscribe(callback: () => void) {
   const onStorage = (e: StorageEvent) => e.key === KEY && callback();
-  window.addEventListener("heforage:store", callback);
+  window.addEventListener("1ry-space:store", callback);
   window.addEventListener("storage", onStorage);
   return () => {
-    window.removeEventListener("heforage:store", callback);
+    window.removeEventListener("1ry-space:store", callback);
     window.removeEventListener("storage", onStorage);
   };
 }

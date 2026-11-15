@@ -1,7 +1,7 @@
 // Programs run inside the sandbox. Each runs every test against a fresh copy of
 // the learner's code and prints RESULT_MARK followed by a JSON result.
 
-export const RESULT_MARK = "__HF_RESULT__";
+export const RESULT_MARK = "__RUNNER_RESULT__";
 
 const b64 = (payload) => Buffer.from(JSON.stringify(payload)).toString("base64");
 
@@ -26,9 +26,16 @@ def describe(e):
         return msg or "a check failed"
     return f"{type(e).__name__}: {msg}" if msg else type(e).__name__
 
+# Tests can read what the learner's program printed (__output__) and its code (__source__).
 def fresh():
-    ns = {"__name__": "__main__", "__file__": os.path.join(W, P["entry"])}
-    exec(compile(entry["content"], P["entry"], "exec"), ns)
+    ns = {"__name__": "__main__", "__file__": os.path.join(W, P["entry"]), "__source__": entry["content"]}
+    buf = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(buf):
+            exec(compile(entry["content"], P["entry"], "exec"), ns)
+    finally:
+        sys.stdout.write(buf.getvalue())
+    ns["__output__"] = buf.getvalue()
     return ns
 
 out = io.StringIO()
@@ -68,14 +75,17 @@ const P = JSON.parse(Buffer.from("${b64(payload)}", "base64").toString());
 const entry = P.files.find((f) => f.path === P.entry);
 const logs = [];
 const show = (v) => (typeof v === "string" ? v : (() => { try { return JSON.stringify(v); } catch { return String(v); } })());
-const consoleShim = { log: (...a) => logs.push(a.map(show).join(" ")), error: (...a) => logs.push(a.map(show).join(" ")), warn: (...a) => logs.push(a.map(show).join(" ")) };
 class AssertionError extends Error {}
 const assert = (cond, msg) => { if (!cond) throw new AssertionError(msg || "a check failed"); };
 const describe = (e) => (e instanceof AssertionError ? e.message : e && e.message ? e.name + ": " + e.message : String(e));
+// Tests can read what the learner's program printed (__output__) and its code (__source__).
 function fresh() {
   const registered = [];
-  const ctx = vm.createContext({ console: consoleShim, assert, test: (name, fn) => registered.push({ name, fn }) });
+  const own = [];
+  const say = (...a) => { const line = a.map(show).join(" "); logs.push(line); own.push(line); };
+  const ctx = vm.createContext({ console: { log: say, error: say, warn: say }, assert, test: (name, fn) => registered.push({ name, fn }), __source__: entry.content });
   vm.runInContext(entry.content, ctx, { filename: P.entry, timeout: 8000 });
+  ctx.__output__ = own.join("\\n");
   return { ctx, registered };
 }
 const result = { error: null, tests: [] };

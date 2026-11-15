@@ -5,8 +5,11 @@ import { clientIp, errorJson, readJson } from "@/server/http";
 
 // POST /api/flicky/speak  SpeakRequest → audio/wav.
 // 503 with X-Fallback: browser tells the client to use speechSynthesis instead.
+// Answers are spoken in short chunks, and a room of people can share one IP.
+const SPEAK_LIMIT = 150;
+
 export async function POST(request: Request) {
-  if (!allow(`tts:${clientIp(request)}`)) return errorJson(429, "Too many voice requests in a minute.", { "X-Fallback": "browser" });
+  if (!allow(`tts:${clientIp(request)}`, SPEAK_LIMIT)) return errorJson(429, "Too many voice requests in a minute.", { "X-Fallback": "browser" });
   const body = await readJson(request, SpeakRequestSchema);
   if (!body.ok) return body.response;
 

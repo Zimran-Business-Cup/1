@@ -67,10 +67,10 @@ export function CodeTask({ exercise, disabled, onSubmit }: Props) {
         {exercise.kind === "python" && !result && <span className="text-sm text-ink-soft">The first run loads Python in your browser, a few seconds.</span>}
       </div>
       {result && (
-        <div className="border-t border-line bg-ink px-5 py-4 font-mono text-[13px] leading-relaxed text-[#e9e9f2]">
+        <div className="border-t border-line bg-ink px-5 py-4 font-mono text-[13px] leading-relaxed text-[#e3e7ee]">
           {result.output && <pre className="whitespace-pre-wrap">{result.output}</pre>}
           {!result.ok && <pre className="whitespace-pre-wrap text-[#ff8a99]">{result.error}</pre>}
-          {result.ok && !result.output && !testState && <span className="text-[#9a9ab0]">No output. Add a print() / console.log() to see values.</span>}
+          {result.ok && !result.output && !testState && <span className="text-[#98a0b2]">No output. Add a print() / console.log() to see values.</span>}
           {testState && (
             <p className={`mt-1 font-sans text-sm font-semibold ${testState.passed ? "text-[#5ce0b0]" : "text-[#ff8a99]"}`}>
               {testState.passed ? "✓ All checks passed" : `✗ ${testState.error}`}

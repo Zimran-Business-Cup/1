@@ -1,6 +1,6 @@
-# heforage
+# 1ry-space
 
-Try a new career before you commit. heforage lets US adults who are thinking about a career switch (say, an accountant curious about tech) open a session for a role, read what the job involves and what it pays, take a one-minute level quiz, and do the real tasks a junior does in week one with an AI mentor. At the end the mentor gives an honest fit verdict, and the learner can compare roles in parallel sessions.
+Try a new career before you commit. 1ry-space lets US adults who are thinking about a career switch (say, an accountant curious about tech) open a session for a role, read what the job involves and what it pays, take a one-minute level quiz, and do the real tasks a junior does in week one with an AI mentor. At the end the mentor gives an honest fit verdict, and the learner can compare roles in parallel sessions.
 
 ## What works
 
@@ -15,11 +15,11 @@ Try a new career before you commit. heforage lets US adults who are thinking abo
 
 ```bash
 npm install
-cp .env.example .env.local   # add ANTHROPIC_API_KEY for the AI mentor
+cp .env.example .env.local   # add ANTHROPIC_API_KEY or OPENROUTER_API_KEY for the AI mentor
 npm run dev
 ```
 
-Without `ANTHROPIC_API_KEY` the server answers with a built-in demo mentor (labelled "Demo mentor" in the UI). It reacts to the learner's real answers and real test results, but uses a fixed bank of questions and tasks.
+Without a model key the server answers with a built-in demo mentor (labelled "Demo mentor" in the UI). It reacts to the learner's real answers and real test results, but uses a fixed bank of questions and tasks.
 
 The full stack (Caddy, app, Postgres, sandbox runner, Kokoro) runs with Docker Compose:
 

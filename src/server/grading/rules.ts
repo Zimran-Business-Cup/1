@@ -1,13 +1,5 @@
 import type { Check } from "@/contracts/task";
-import type { BoardState, DesignScene, Report } from "@/contracts/workspace";
-import { contrastRatio } from "./contrast";
-
-export interface DesignRules {
-  nodeId: string;
-  fill: "solid" | "linear";
-  radius: number;
-  minContrast: number;
-}
+import type { BoardState, Report } from "@/contracts/workspace";
 
 export interface BoardRules {
   mustBeInSprint: string[];
@@ -21,31 +13,6 @@ const check = (id: string, label: string, passed: boolean, message: string | nul
   by: "code",
   message: passed ? null : message,
 });
-
-export function checkDesign(scene: DesignScene, rules: DesignRules): Check[] {
-  const node = scene.nodes.find((n) => n.id === rules.nodeId);
-  if (!node) return [check("node", `The layer "${rules.nodeId}" exists`, false, "The layer was deleted or renamed.")];
-
-  const fill = node.fill;
-  const fillOk = fill?.type === rules.fill;
-  const radiusOk = Math.abs(node.radius - rules.radius) < 0.5;
-
-  const colors = !fill ? [] : fill.type === "solid" ? [fill.color] : fill.stops.map((s) => s.color);
-  const ratios = node.textColor ? colors.map((c) => contrastRatio(node.textColor!, c)) : [];
-  const worst = ratios.length && ratios.every((r) => r !== null) ? Math.min(...(ratios as number[])) : null;
-  const contrastOk = worst !== null && worst >= rules.minContrast;
-
-  return [
-    check("fill", `Fill is a ${rules.fill === "linear" ? "linear gradient" : "solid colour"}`, fillOk, `The fill is ${fill ? fill.type : "empty"}.`),
-    check("radius", `Corner radius is ${rules.radius}`, radiusOk, `The radius is ${node.radius}.`),
-    check(
-      "contrast",
-      `Text contrast is at least ${rules.minContrast}:1`,
-      contrastOk,
-      worst === null ? "Couldn't read the text or fill colours." : `The weakest part of the fill gives ${worst.toFixed(1)}:1.`,
-    ),
-  ];
-}
 
 export function checkBoard(board: BoardState, report: Report | undefined, rules: BoardRules): Check[] {
   const sprint = board.cards.filter((c) => c.column === "sprint");

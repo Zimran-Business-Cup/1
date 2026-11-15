@@ -1,7 +1,7 @@
 import { PRICING, type CheckoutStatus } from "@/contracts/billing";
 
 const API = "https://api.stripe.com/v1";
-const COUPON_ID = "heforage-first-month-20";
+const COUPON_ID = "1ry-space-first-month-20";
 
 export class StripeError extends Error {
   constructor(
@@ -76,7 +76,7 @@ export async function createCheckout(origin: string, returnPath: string): Promis
           currency: PRICING.currency,
           unit_amount: PRICING.monthlyCents,
           recurring: { interval: "month" },
-          product_data: { name: "heforage Pro", description: "Every task in every role, your practice plan and portfolio review." },
+          product_data: { name: "1ry-space Pro", description: "Every task in every role, your practice plan and portfolio review." },
         },
       },
     ],
@@ -84,7 +84,7 @@ export async function createCheckout(origin: string, returnPath: string): Promis
     // Stripe fills in {CHECKOUT_SESSION_ID}; the page checks it with /api/checkout/status.
     success_url: back("checkout=success&session_id={CHECKOUT_SESSION_ID}"),
     cancel_url: back("checkout=cancel"),
-    metadata: { product: "heforage-pro" },
+    metadata: { product: "1ry-space-pro" },
   });
   return session.url;
 }
