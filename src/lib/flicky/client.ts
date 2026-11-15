@@ -141,6 +141,9 @@ export function createSpeaker(): Speaker {
     new Promise<void>((resolve) => {
       if (mine !== run || typeof speechSynthesis === "undefined") return resolve();
       const utterance = new SpeechSynthesisUtterance(sentence);
+      // Answers are always English; without a lang the browser may pick the system voice.
+      utterance.lang = "en-US";
+      utterance.voice = speechSynthesis.getVoices().find((v) => v.lang === "en-US") ?? null;
       utterance.rate = 1.04;
       utterance.onend = () => resolve();
       utterance.onerror = () => resolve();

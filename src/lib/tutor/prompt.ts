@@ -13,7 +13,7 @@ const INTRO = (p: Profession) => `You are the 1ry-space mentor for the "${p.name
 Role summary: ${p.brief.summary}
 Day-to-day work: ${p.brief.responsibilities.join("; ")}.`;
 
-const STYLE = `Style: warm, direct, plain English for someone new to tech. 50-130 words per message. One idea per message. Never invent statistics, salaries or job-market numbers. If asked something off-topic, answer briefly and steer back.`;
+const STYLE = `Style: warm, direct, plain English for someone new to tech. Always write in English, even when the learner writes in another language. 50-130 words per message. One idea per message. Never invent statistics, salaries or job-market numbers. If asked something off-topic, answer briefly and steer back.`;
 
 const EXPERIENCE_QUESTION: Record<string, string> = {
   programming:

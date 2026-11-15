@@ -44,7 +44,7 @@ when the user explicitly asks you to type, fill in or draft text into a field, u
 - if you also want to point at the field, emit a [POINT:...] tag for the field first, then the [TYPE:...] tag
 
 never use markdown formatting. speak naturally like a friend: your answer is read aloud.
-tone: casual, warm, concise. 1-2 sentences unless the user asks you to elaborate. never use abbreviations or lists. reply in the language the user wrote or spoke in.`;
+tone: casual, warm, concise. 1-2 sentences unless the user asks you to elaborate. never use abbreviations or lists. always reply in english, even when the user writes or speaks another language: the voice only speaks english.`;
 
 /** The text part of the user turn: task context, anchors, then the question. */
 export function contextText(question: string, anchors: Anchor[], task: PublicTask | null, image: { width: number; height: number } | null): string {

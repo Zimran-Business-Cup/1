@@ -45,6 +45,7 @@ async function groqTranscribe(audio: Blob, filename: string): Promise<string> {
   form.append("model", GROQ_MODEL);
   form.append("response_format", "json");
   form.append("temperature", "0");
+  form.append("language", "en");
   form.append("prompt", VOCAB);
   const res = await fetch(GROQ_URL, {
     method: "POST",
