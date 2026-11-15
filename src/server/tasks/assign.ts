@@ -34,6 +34,17 @@ function withAnswers(profile: Profile, history: { role: string; content: string 
   };
 }
 
+const MIN_ANSWERS = 2;
+const WANTS_TO_START = /\b(start|skip|let'?s go|ready|give me (a|the) task|show me (a|the) task)\b/i;
+
+/** Some models fill an empty profile on the first turn, so the server decides when the interview
+ *  is over: a profile with content, after two answers or when the learner asks to start. */
+function interviewDone(profile: Profile, history: { role: string; content: string }[]): boolean {
+  const filled = [profile.currentJob, profile.experience, profile.goal].some((v) => v.trim()) || profile.tools.length > 0;
+  const answers = history.filter((m) => m.role === "user").map((m) => m.content);
+  return filled && (answers.length >= MIN_ANSWERS || WANTS_TO_START.test(answers[answers.length - 1] ?? ""));
+}
+
 function alreadyAssigned(history: { role: string; content: string }[]): boolean {
   return history.some((m) => {
     if (m.role !== "assistant") return false;
@@ -64,11 +75,12 @@ export function legacyExercise(task: PublicTask): Exercise {
 export function attachTask(role: string, history: { role: string; content: string }[], turn: MentorTurn): TutorTurn {
   const seed = seedTaskFor(role);
   if (!seed) return { ...turn, task: null };
-  if (turn.profile && !alreadyAssigned(history)) {
+  if (alreadyAssigned(history)) return { ...turn, exercise: null, task: null };
+  if (turn.profile && interviewDone(turn.profile, history)) {
     const profile = role === LADDER_ROLE ? withAnswers(turn.profile, history) : turn.profile;
     const first = startTaskFor(role, profile) ?? seed;
     return { ...turn, profile, stage: "tasks", task: first.card, exercise: legacyExercise(first) };
   }
-  // In MVP roles tasks come only from the platform.
-  return { ...turn, exercise: null, task: null };
+  // Still interviewing: tasks come only from the platform, and only after the interview.
+  return { ...turn, profile: null, stage: turn.stage === "tasks" ? "intro" : turn.stage, exercise: null, task: null };
 }
