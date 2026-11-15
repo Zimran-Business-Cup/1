@@ -41,7 +41,7 @@ export function modelAskStream(req: AskRequest, signal: AbortSignal): ReadableSt
           {
             system: FLICKY_SYSTEM,
             history: normalizeHistory(req.history),
-            question: { text: contextText(req.question, req.anchors, task, size), jpegBase64: req.snapshot?.data },
+            question: { text: contextText(req.question, req.anchors, task, size, req.focus), jpegBase64: req.snapshot?.data },
           },
           signal,
         );

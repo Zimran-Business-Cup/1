@@ -22,6 +22,14 @@ export const SnapshotSchema = z.object({
   viewportHeight: z.number().positive(),
 });
 
+export const FocusSchema = z.object({
+  x: z.number(),
+  y: z.number(),
+  width: z.number().positive(),
+  height: z.number().positive(),
+  anchorIds: z.array(z.string().regex(ANCHOR_ID)).max(100).describe("Anchors inside the circled area"),
+});
+
 export const AskRequestSchema = z.object({
   sessionId: z.string(),
   taskId: z.string().nullable(),
@@ -29,6 +37,7 @@ export const AskRequestSchema = z.object({
   question: z.string().min(1).max(2000),
   anchors: z.array(AnchorSchema).max(300),
   snapshot: SnapshotSchema.nullable(),
+  focus: FocusSchema.nullable().optional().describe("Area the learner circled while asking, in viewport CSS pixels"),
   history: z
     .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(8000) }))
     .max(40),
@@ -73,6 +82,7 @@ export const AskEventSchema = z.discriminatedUnion("type", [
 export type Anchor = z.infer<typeof AnchorSchema>;
 export type Snapshot = z.infer<typeof SnapshotSchema>;
 export type AskRequest = z.infer<typeof AskRequestSchema>;
+export type Focus = z.infer<typeof FocusSchema>;
 export type TranscribeResponse = z.infer<typeof TranscribeResponseSchema>;
 export type SpeakRequest = z.infer<typeof SpeakRequestSchema>;
 export type WalkthroughTarget = z.infer<typeof WalkthroughTargetSchema>;
