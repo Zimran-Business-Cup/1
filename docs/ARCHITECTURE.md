@@ -43,9 +43,11 @@ Request and response shapes are zod schemas in `src/contracts`.
 | `POST /api/flicky/transcribe` | multipart `audio` → `TranscribeResponse` | Groq Whisper or an OpenRouter audio model; send WAV |
 | `POST /api/flicky/speak` | `SpeakRequest` → `audio/wav` | Kokoro; 503 + `X-Fallback: browser` when unavailable |
 | `POST /api/events` | `AppEvent` → 204 | hints, runs, interest ratings |
+| `POST /api/checkout` | `CheckoutRequest` → `{ url }` | Stripe Checkout page, test mode |
+| `GET /api/checkout/status` | `?session_id=cs_…` → `CheckoutStatus` | after Stripe's redirect; `paid` unlocks Pro |
 | `GET /api/health` | → `{ ok, db, ai }` | Docker healthcheck; `ai` is the model provider or `demo` |
 
-Every route works without external keys: the mentor falls back to a scripted demo, Flicky to a recorded answer, speech-to-text to a fixed question. The response says which mode answered (`mode` in `/api/tutor`, `X-Flicky-Mode` header in Flicky routes).
+Every route works without external keys: the mentor falls back to a scripted demo, Flicky to a recorded answer, speech-to-text to a fixed question, checkout to the demo upgrade (503 with `fallback: "demo"`). The response says which mode answered (`mode` in `/api/tutor`, `X-Flicky-Mode` header in Flicky routes).
 
 ## Flows
 
@@ -119,4 +121,5 @@ The runner needs the host's Docker socket, which is root-equivalent. It is there
 - **Self-hosted.** One VPS with Docker Compose instead of a serverless platform: the sandbox needs to start containers, voice synthesis needs a long-running CPU process, and Flicky streams for minutes.
 - **Grading by code.** Hidden tests and rule checks decide `passed`; the model never overrides them.
 - **Anchors over pixels.** Flicky originally points with screenshot coordinates. Our workspaces register anchors, which stay correct at any window size and can be validated.
+- **Stripe in test mode, no SDK.** Two REST calls over `fetch`. The $20 first month is a one-time $15 coupon on the $35 price, so Stripe bills the real plan. Only `sk_test_`/`rk_test_` keys are accepted unless `STRIPE_ALLOW_LIVE=1`; Pro is not stored on the server yet (no webhooks).
 - **Kokoro instead of ElevenLabs.** Open weights (Apache 2.0), no per-character cost, about 0.4–1.6 s per answer on CPU in local tests.
