@@ -22,7 +22,7 @@ export function Paywall({ open, onClose, onUpgrade }: { open: boolean; onClose: 
       aria-labelledby="paywall-title"
       className="m-auto w-[min(520px,calc(100vw-1.5rem))] rounded-[2rem] bg-paper p-0 text-ink backdrop:bg-ink/70 backdrop:backdrop-blur-sm"
     >
-      <div className="bg-sun px-8 pb-8 pt-10">
+      <div className="bg-steel px-8 pb-8 pt-10">
         <h2 id="paywall-title" className="text-4xl font-bold leading-[1] tracking-[-0.045em]">Keep going with Pro</h2>
         <p className="mt-3 text-lg text-ink/75">You finished your free task. Pro unlocks the rest of this role and every other one.</p>
       </div>

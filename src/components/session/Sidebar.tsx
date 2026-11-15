@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSyncExternalStore } from "react";
 import { getProfession } from "@/lib/catalog";
+import { isRoleOpen, roleName } from "@/lib/features";
 import { STAGE_LABEL, getPlan, listSessions, subscribe } from "@/lib/sessions";
 import { Logo } from "../Logo";
 import { RoleIcon } from "../RoleIcon";
@@ -16,15 +17,15 @@ const useSessionsKey = () =>
 
 export function Sidebar({ current, onNewRole, onUpgrade }: { current: string; onNewRole: () => void; onUpgrade: () => void }) {
   useSessionsKey();
-  const sessions = typeof window === "undefined" ? [] : listSessions();
+  const sessions = typeof window === "undefined" ? [] : listSessions().filter((s) => isRoleOpen(s.slug));
   const plan = typeof window === "undefined" ? "free" : getPlan();
 
   return (
     <div className="flex h-full flex-col gap-6 p-5 text-paper">
-      <Logo />
+      <Logo home />
       <button
         onClick={onNewRole}
-        className="flex items-center justify-center gap-2 rounded-full bg-paper py-3 font-semibold text-ink shadow-[0_5px_0_0_rgba(13,13,20,0.18)] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_0_rgba(13,13,20,0.22)] active:translate-y-0.5 active:shadow-none"
+        className="flex items-center justify-center gap-2 rounded-full bg-paper py-3 font-semibold text-ink shadow-[0_5px_0_0_rgba(20,26,39,0.18)] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_0_rgba(20,26,39,0.22)] active:translate-y-0.5 active:shadow-none"
       >
         <span className="text-xl leading-none">+</span> Try another role
       </button>
@@ -45,7 +46,7 @@ export function Sidebar({ current, onNewRole, onUpgrade }: { current: string; on
                 >
                   <RoleIcon slug={p.slug} size={38} tone="dark" />
                   <span className="min-w-0">
-                    <span className="block truncate font-semibold">{p.name}</span>
+                    <span className="block truncate font-semibold">{roleName(p)}</span>
                     <span className="block text-sm text-paper/70">
                       {s.stage === "tasks" ? `${s.tasksCompleted} task${s.tasksCompleted === 1 ? "" : "s"} done` : STAGE_LABEL[s.stage]}
                     </span>
@@ -59,12 +60,12 @@ export function Sidebar({ current, onNewRole, onUpgrade }: { current: string; on
 
       <div className="rounded-2xl bg-paper/14 p-4 backdrop-blur-sm">
         {plan === "pro" ? (
-          <p className="font-semibold">Pro plan <span className="text-sun">●</span></p>
+          <p className="font-semibold">Pro plan <span className="text-steel">●</span></p>
         ) : (
           <>
             <p className="font-semibold">Free plan</p>
             <p className="mt-1 text-sm text-paper/75">First task in every role is free.</p>
-            <button onClick={onUpgrade} className="mt-3 w-full rounded-full bg-sun py-2 font-semibold text-ink transition hover:brightness-95">
+            <button onClick={onUpgrade} className="mt-3 w-full rounded-full bg-paper py-2 font-semibold text-ink transition hover:bg-steel">
               Go Pro
             </button>
           </>
