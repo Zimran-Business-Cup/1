@@ -1,9 +1,10 @@
 "use client";
 
+import type { GradeResult } from "@/contracts/task";
 import type { Stage, TutorTurn } from "./tutor/schema";
 
-// Session storage in the browser for now (no login). The shape is what a
-// Supabase table will hold later; only this module needs to change.
+// Session storage in the browser for now (no login); the server keeps
+// profiles and attempts in Postgres. Only this module touches localStorage.
 
 export interface ChatItem {
   id: string;
@@ -11,7 +12,9 @@ export interface ChatItem {
   /** What the API sees: plain text for the learner, turn JSON for the mentor. */
   content: string;
   turn?: TutorTurn;
-  submission?: { passed: boolean; kind: "python" | "javascript" | "written" };
+  submission?: { passed: boolean; kind: "python" | "javascript" | "written" | "design" };
+  /** A verdict from POST /api/tasks/:id/submit, shown as a result card. */
+  grade?: GradeResult;
 }
 
 export interface Session {
@@ -23,6 +26,8 @@ export interface Session {
   level: string | null;
   stage: Stage;
   mode: "ai" | "demo" | null;
+  /** The learner's unsent work per task id: file path → content (a design keeps its scene as "scene.json"). */
+  drafts?: Record<string, Record<string, string>>;
 }
 
 interface Store {

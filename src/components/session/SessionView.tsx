@@ -1,37 +1,26 @@
 "use client";
 
+import { PanelLeft } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import ReactMarkdown from "react-markdown";
+import type { GradeResult, PublicTask, Submission, TaskCard } from "@/contracts/task";
+import { DesignSceneSchema, type DesignScene } from "@/contracts/workspace";
+import { getTask, submitTask } from "@/lib/api";
 import type { Profession } from "@/lib/catalog";
-import type { RunResult } from "@/lib/runner";
+import { roleName } from "@/lib/features";
 import { getPlan, loadSession, newId, newSession, saveSession, setPlan, type ChatItem, type Session } from "@/lib/sessions";
-import type { Exercise, Stage, TutorTurn } from "@/lib/tutor/schema";
+import type { TutorTurn } from "@/lib/tutor/schema";
 import { CatalogModal } from "../CatalogModal";
 import { DotGrid } from "../DotGrid";
-import { PanelLeft } from "lucide-react";
+import { Flicky } from "../flicky/Flicky";
 import { RoleIcon } from "../RoleIcon";
-import { CodeTask } from "./CodeTask";
+import { CodeWorkspace } from "../workspace/code/CodeWorkspace";
+import { DesignWorkspace } from "../workspace/design/DesignWorkspace";
+import { TicketPanel } from "../workspace/TicketPanel";
+import { WorkspaceShell } from "../workspace/WorkspaceShell";
+import { ChatThread, taskCards } from "./ChatThread";
+import { Composer } from "./Composer";
 import { Paywall } from "./Paywall";
-import { RoleBrief } from "./RoleBrief";
 import { Sidebar } from "./Sidebar";
-import { WrittenTask } from "./WrittenTask";
-
-const FREE_TASKS = 1;
-const STAGES: { id: Stage; label: string }[] = [
-  { id: "intro", label: "Role" },
-  { id: "quiz", label: "Quiz" },
-  { id: "tasks", label: "Tasks" },
-  { id: "fit", label: "Fit check" },
-  { id: "done", label: "Verdict" },
-];
-
-function submissionText(ex: Exercise, payload: { code?: string; result?: RunResult; answer?: string }): string {
-  if (ex.kind === "written") return `[Submission] written answer for "${ex.title}":\n${payload.answer}`;
-  const r = payload.result!;
-  const passed = r.ok && r.tests?.passed;
-  const error = !r.ok ? r.error : r.tests?.error;
-  return `[Submission] result: ${passed ? "passed" : "failed"}${error ? `\nerror: ${error}` : ""}\n\`\`\`${ex.kind}\n${payload.code}\n\`\`\``;
-}
 
 const SIDEBAR_KEY = "1ry-space:sidebar";
 const isDesktop = () => window.matchMedia("(min-width: 1024px)").matches;
@@ -56,22 +45,66 @@ function initialSidebarOpen(): boolean {
 // so React's development double-mount doesn't ask twice.
 const opened = new Set<string>();
 
+type OpenTask = { card: TaskCard; number: number; task: PublicTask | null; error: string | null };
+
+// A design draft is kept with the code drafts as one JSON "file".
+const SCENE_DRAFT = "scene.json";
+
+function draftScene(files: Record<string, string> | undefined): DesignScene | null {
+  const raw = files?.[SCENE_DRAFT];
+  if (!raw) return null;
+  try {
+    const parsed = DesignSceneSchema.safeParse(JSON.parse(raw));
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
+}
+
+/** A grade turns into a mentor turn so the chat history stays one list. */
+function gradeTurn(grade: GradeResult, level: string | null): TutorTurn {
+  return {
+    message: grade.explanation,
+    // With no next task (design, the end of a ladder) the learner needs a way to move on to the fit check.
+    quickReplies: grade.passed && !grade.next ? ["What's next?"] : [],
+    stage: "tasks",
+    level,
+    profile: null,
+    exercise: null,
+    taskCompleted: grade.passed,
+    task: grade.next,
+  };
+}
+
 export function SessionView({ profession }: { profession: Profession }) {
   const [session, setSession] = useState<Session>(() => loadSession(profession.slug));
   // A brand-new session is "pending" from the start: the mentor speaks first.
   const [pending, setPending] = useState(() => session.items.length === 0);
   const [error, setError] = useState<string | null>(null);
-  const [draft, setDraft] = useState("");
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [plan, setPlanState] = useState<"free" | "pro">(() => getPlan());
   const [sidebarOpen, setSidebarOpen] = useState(initialSidebarOpen);
+  const [open, setOpen] = useState<OpenTask | null>(null);
   const bottom = useRef<HTMLDivElement>(null);
+  const sideBottom = useRef<HTMLDivElement>(null);
+  // Always the latest session, for callbacks that outlive a render
+  // (commit() updates it synchronously; the effect is a safety net).
+  const latest = useRef(session);
+  useEffect(() => {
+    latest.current = session;
+  }, [session]);
+
+  const commit = useCallback((next: Session) => {
+    saveSession(next);
+    latest.current = next;
+    setSession(next);
+  }, []);
 
   const toggleSidebar = useCallback(() => {
-    setSidebarOpen((open) => {
-      if (isDesktop()) saveSidebarPref(!open);
-      return !open;
+    setSidebarOpen((v) => {
+      if (isDesktop()) saveSidebarPref(!v);
+      return !v;
     });
   }, []);
 
@@ -106,23 +139,21 @@ export function SessionView({ profession }: { profession: Profession }) {
           return;
         }
         const turn = data.turn as TutorTurn;
-        const updated: Session = {
+        commit({
           ...next,
           items: [...next.items, { id: newId(), role: "assistant", content: JSON.stringify(turn), turn }],
           stage: turn.stage,
           level: turn.level ?? next.level,
           tasksCompleted: next.tasksCompleted + (turn.taskCompleted ? 1 : 0),
           mode: data.mode,
-        };
-        saveSession(updated);
-        setSession(updated);
+        });
       } catch {
         setError("You seem to be offline. Check your connection and send again.");
       } finally {
         setPending(false);
       }
     },
-    [],
+    [commit],
   );
 
   // A brand-new session starts with the mentor speaking first.
@@ -137,21 +168,26 @@ export function SessionView({ profession }: { profession: Profession }) {
 
   useEffect(() => {
     bottom.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    sideBottom.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [session.items.length, pending]);
 
-  function send(content: string, submission?: ChatItem["submission"]) {
-    if (pending || !content.trim()) return;
-    const next: Session = { ...session, items: [...session.items, { id: newId(), role: "user", content, submission }] };
-    saveSession(next);
-    setSession(next);
-    setDraft("");
-    retry(next);
-  }
+  // Opening a workspace shows the latest messages in its side chat.
+  const openId = open?.card.id;
+  useEffect(() => {
+    if (openId) sideBottom.current?.scrollIntoView({ block: "end" });
+  }, [openId]);
 
   function retry(next: Session) {
     setError(null);
     setPending(true);
     void ask(next);
+  }
+
+  function send(content: string, submission?: ChatItem["submission"]) {
+    if (pending || !content.trim()) return;
+    const next: Session = { ...latest.current, items: [...latest.current.items, { id: newId(), role: "user", content, submission }] };
+    commit(next);
+    retry(next);
   }
 
   function upgrade() {
@@ -162,16 +198,68 @@ export function SessionView({ profession }: { profession: Profession }) {
 
   function restart() {
     const fresh = newSession(profession.slug);
-    saveSession(fresh);
-    setSession(fresh);
+    commit(fresh);
     retry(fresh);
   }
 
-  // Exercises in order; everything before the latest one is finished.
-  const exerciseItems = session.items.filter((i) => i.turn?.exercise);
-  const latestExerciseId = exerciseItems.at(-1)?.id;
-  const lastItem = session.items.at(-1);
-  const stageIndex = STAGES.findIndex((s) => s.id === session.stage);
+  // ---------- tasks and the workspace ----------
+
+  async function openTask(card: TaskCard) {
+    const number = taskCards(latest.current.items).findIndex((c) => c.card.id === card.id) + 1 || 1;
+    setOpen({ card, number, task: null, error: null });
+    try {
+      const task = await getTask(card.id);
+      setOpen((o) => (o?.card.id === card.id ? { ...o, task } : o));
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "This task couldn't be loaded.";
+      setOpen((o) => (o?.card.id === card.id ? { ...o, error: message } : o));
+    }
+  }
+
+  const saveDraft = useCallback(
+    (taskId: string, files: Record<string, string>) => {
+      const s = latest.current;
+      commit({ ...s, drafts: { ...s.drafts, [taskId]: files } });
+    },
+    [commit],
+  );
+
+  async function submitWork(taskId: string, work: Pick<Submission, "files" | "scene">) {
+    const grade = await submitTask({ taskId, ...work });
+    const s = latest.current;
+    const checks = grade.checks.filter((c) => c.by === "code");
+    const summary = `[Submission] task ${taskId}: ${grade.passed ? "passed" : "failed"} (${checks.filter((c) => c.passed).length}/${checks.length} ${work.scene ? "design-system" : "hidden"} checks)`;
+    const turn = gradeTurn(grade, s.level);
+    commit({
+      ...s,
+      items: [
+        ...s.items,
+        { id: newId(), role: "user", content: summary, submission: { passed: grade.passed, kind: work.scene ? "design" : (open?.card.language ?? "python") } },
+        { id: newId(), role: "assistant", content: JSON.stringify(turn), turn, grade },
+      ],
+      tasksCompleted: s.tasksCompleted + (grade.passed ? 1 : 0),
+    });
+    return grade;
+  }
+
+  const closeWorkspace = useCallback(() => setOpen(null), []);
+
+  // ---------- render ----------
+
+
+  const threadProps = {
+    profession,
+    session,
+    plan,
+    pending,
+    error,
+    onSend: send,
+    onRetry: () => retry(latest.current),
+    onOpenTask: (card: TaskCard) => void openTask(card),
+    onPaywall: () => setPaywallOpen(true),
+    onCatalog: () => setCatalogOpen(true),
+    onRestart: restart,
+  };
 
   return (
     <div className="relative flex h-dvh bg-hero">
@@ -185,7 +273,7 @@ export function SessionView({ profession }: { profession: Profession }) {
       <button aria-label="Hide sessions" tabIndex={-1} onClick={toggleSidebar} className={`sidebar-scrim ${sidebarOpen ? "sidebar-scrim--on" : ""}`} />
 
       {/* Chat */}
-      <main className="relative m-2 flex min-w-0 flex-1 flex-col overflow-hidden rounded-[2rem] bg-paper shadow-[0_24px_60px_-20px_rgba(13,13,20,0.35)]">
+      <main className="relative m-2 flex min-w-0 flex-1 flex-col overflow-hidden rounded-[2rem] bg-paper shadow-[0_24px_60px_-20px_rgba(20,26,39,0.35)]">
         <header className="flex items-center gap-3 border-b border-line px-4 py-3 sm:px-6">
           <button
             onClick={toggleSidebar}
@@ -199,164 +287,86 @@ export function SessionView({ profession }: { profession: Profession }) {
           </button>
           <RoleIcon slug={profession.slug} size={40} />
           <div className="min-w-0">
-            <h1 className="truncate text-lg font-bold tracking-[-0.02em]">{profession.name}</h1>
-            <ol className="flex flex-wrap gap-x-3 text-sm" aria-label="Session progress">
-              {STAGES.map((s, i) => (
-                <li key={s.id} aria-current={i === stageIndex ? "step" : undefined} className={i < stageIndex ? "text-mint" : i === stageIndex ? "font-semibold text-hero" : "text-ink-soft/60"}>
-                  {i < stageIndex ? "✓ " : ""}
-                  {s.label}
-                </li>
-              ))}
-            </ol>
+            <h1 className="truncate text-lg font-bold tracking-[-0.02em]">{roleName(profession)}</h1>
           </div>
         </header>
 
-          <div className="flex-1 overflow-y-auto">
-            <div className="mx-auto flex max-w-3xl flex-col gap-5 px-4 py-6 sm:px-6">
-              {/* The role card is the mentor's first message in every session */}
-              <div className="flex gap-3">
-                <span aria-hidden className="mt-1 grid size-8 shrink-0 place-items-center rounded-full bg-hero text-sm font-bold text-paper">ai</span>
-                <div className="min-w-0 flex-1">
-                  <RoleBrief profession={profession} />
-                </div>
-              </div>
-              {session.items.map((item) => {
-                if (item.role === "user") {
-                  if (item.submission) {
-                    const passed = item.submission.passed;
-                    return (
-                      <div key={item.id} className="self-end rounded-[1.25rem] bg-hero-wash px-4 py-3 text-[15px]">
-                        <span className="font-semibold">
-                          {item.submission.kind === "written" ? "Submitted my answer" : passed ? "✓ Submitted: all checks passed" : "Submitted: some checks failed"}
-                        </span>
-                      </div>
-                    );
-                  }
-                  return (
-                    <p key={item.id} className="max-w-[85%] self-end whitespace-pre-wrap rounded-[1.25rem] bg-hero px-4 py-3 text-[16px] text-paper">
-                      {item.content}
-                    </p>
-                  );
-                }
-
-                const turn = item.turn!;
-                const ex = turn.exercise;
-                const exIndex = exerciseItems.findIndex((e) => e.id === item.id);
-                const locked = ex && plan === "free" && exIndex >= FREE_TASKS;
-                const isLatestEx = item.id === latestExerciseId;
-
-                return (
-                  <div key={item.id} className="flex flex-col gap-3">
-                    <div className="flex gap-3">
-                      <span aria-hidden className="mt-1 grid size-8 shrink-0 place-items-center rounded-full bg-hero text-sm font-bold text-paper">ai</span>
-                      <div className="prose-chat min-w-0 text-[16px] leading-relaxed">
-                        <ReactMarkdown>{turn.message}</ReactMarkdown>
-                      </div>
-                    </div>
-
-                    {ex && (
-                      <div className="sm:pl-11">
-                        {!isLatestEx ? (
-                          <p className="rounded-[1.25rem] bg-mint-wash px-4 py-3 font-semibold text-mint">✓ {ex.title}</p>
-                        ) : locked ? (
-                          <div className="rounded-[1.5rem] border border-line bg-mist p-6 text-center">
-                            <p className="text-lg font-bold">{ex.title}</p>
-                            <p className="mt-1 text-ink-soft">Your free task in this role is done. Pro unlocks this one and every task after it.</p>
-                            <button onClick={() => setPaywallOpen(true)} className="mt-4 rounded-full bg-ink px-6 py-3 font-semibold text-paper">
-                              Unlock with Pro
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="space-y-3">
-                            <div className="prose-chat rounded-[1.25rem] bg-sun/35 px-5 py-4 text-[16px] leading-relaxed">
-                              <ReactMarkdown>{ex.task}</ReactMarkdown>
-                            </div>
-                            {ex.kind === "written" ? (
-                              <WrittenTask key={item.id} exercise={ex} disabled={pending} onSubmit={(answer) => send(submissionText(ex, { answer }), { passed: true, kind: "written" })} />
-                            ) : (
-                              <CodeTask
-                                key={item.id}
-                                exercise={ex as Exercise & { kind: "python" | "javascript" }}
-                                disabled={pending}
-                                onSubmit={(code, result) =>
-                                  send(submissionText(ex, { code, result }), { passed: !!(result.ok && result.tests?.passed), kind: ex.kind as "python" | "javascript" })
-                                }
-                              />
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {item === lastItem && !pending && turn.quickReplies.length > 0 && (
-                      <div className="flex flex-wrap gap-2 sm:pl-11">
-                        {turn.quickReplies.map((r) => (
-                          <button key={r} onClick={() => send(r)} className="rounded-full border-2 border-hero px-4 py-2 font-semibold text-hero transition hover:bg-hero hover:text-paper">
-                            {r}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    {item === lastItem && turn.stage === "done" && (
-                      <div className="flex flex-wrap gap-2 sm:pl-11">
-                        <button onClick={() => setCatalogOpen(true)} className="rounded-full bg-ink px-5 py-2.5 font-semibold text-paper">Try another role</button>
-                        <button onClick={() => setPaywallOpen(true)} className="rounded-full bg-sun px-5 py-2.5 font-semibold">Go deeper with Pro</button>
-                        <button onClick={restart} className="rounded-full bg-mist px-5 py-2.5 font-semibold">Start this role again</button>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-
-              {pending && (
-                <div className="flex gap-3" aria-live="polite">
-                  <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-full bg-hero text-sm font-bold text-paper">ai</span>
-                  <span className="flex items-center gap-1 pt-2" aria-label="Mentor is typing">
-                    {[0, 1, 2].map((d) => (
-                      <span key={d} className="size-2 rounded-full bg-ink-soft" style={{ animation: `blink 1.2s ${d * 0.2}s infinite` }} />
-                    ))}
-                  </span>
-                </div>
-              )}
-              {error && (
-                <div role="alert" className="flex flex-wrap items-center gap-3 rounded-[1.25rem] bg-rose-wash px-4 py-3 text-rose">
-                  <span>{error}</span>
-                  <button onClick={() => retry(session)} className="rounded-full bg-rose px-4 py-1.5 text-sm font-semibold text-paper">Retry</button>
-                </div>
-              )}
-              <div ref={bottom} />
-            </div>
+        <div className="flex-1 overflow-y-auto">
+          <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
+            <ChatThread {...threadProps} />
+            <div ref={bottom} />
           </div>
+        </div>
 
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              send(draft);
-            }}
-            className="border-t border-line p-3 sm:p-4"
-          >
-            <div className="mx-auto flex max-w-3xl items-end gap-2 rounded-[1.5rem] bg-mist p-2">
-              <textarea
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    send(draft);
-                  }
-                }}
-                rows={1}
-                placeholder="Ask your mentor anything about this role"
-                aria-label="Message your mentor"
-                className="max-h-40 min-h-11 flex-1 resize-none bg-transparent px-3 py-2.5 outline-none placeholder:text-ink-soft/70"
-              />
-              <button type="submit" disabled={pending || !draft.trim()} className="rounded-full bg-hero px-5 py-2.5 font-semibold text-paper transition hover:bg-hero-deep disabled:opacity-40">
-                Send
-              </button>
-            </div>
-          </form>
+        <Composer disabled={pending} onSend={(text) => send(text)} />
       </main>
+
+      {open && (
+        <WorkspaceShell
+          card={open.card}
+          number={open.number}
+          onClose={closeWorkspace}
+          assistant={
+            open.task && (open.task.code || open.task.design) ? (
+              <Flicky key={open.task.card.id} sessionId={`${session.slug}:${session.createdAt}`} taskId={open.task.card.id} workspace={open.task.card.workspace} />
+            ) : null
+          }
+          ticket={open.task ? <TicketPanel task={open.task} number={open.number} /> : <div className="p-6 text-ink-soft">Loading the ticket…</div>}
+          chat={
+            <>
+              <header className="flex items-center gap-3 border-b border-line px-4 py-3">
+                <RoleIcon slug={profession.slug} size={32} />
+                <div className="min-w-0">
+                  <p className="truncate font-bold leading-tight">{roleName(profession)}</p>
+                  <p className="text-sm text-ink-soft">Your mentor</p>
+                </div>
+              </header>
+              <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+                <ChatThread {...threadProps} compact />
+                <div ref={sideBottom} />
+              </div>
+              <Composer compact disabled={pending} onSend={(text) => send(text)} />
+            </>
+          }
+        >
+          {open.error ? (
+            <div className="grid h-full place-items-center p-8 text-center text-ink">
+              <div>
+                <p className="text-lg font-bold">This task didn&apos;t load</p>
+                <p className="mt-1 text-ink-soft">{open.error}</p>
+                <button onClick={() => void openTask(open.card)} className="mt-4 rounded-full bg-hero px-5 py-2.5 font-semibold text-paper transition hover:bg-hero-deep">
+                  Try again
+                </button>
+              </div>
+            </div>
+          ) : open.task?.code ? (
+            <CodeWorkspace
+              key={open.task.card.id}
+              task={open.task as PublicTask & { code: NonNullable<PublicTask["code"]> }}
+              sessionId={`${session.slug}:${session.createdAt}`}
+              initialFiles={
+                session.drafts?.[open.task.card.id] ?? Object.fromEntries(open.task.code.files.map((f) => [f.path, f.content]))
+              }
+              onDraft={(files) => saveDraft(open.card.id, files)}
+              onSubmit={(files) => submitWork(open.card.id, { files })}
+            />
+          ) : open.task?.design ? (
+            <DesignWorkspace
+              key={open.task.card.id}
+              task={open.task as PublicTask & { design: NonNullable<PublicTask["design"]> }}
+              initialScene={draftScene(session.drafts?.[open.task.card.id]) ?? open.task.design.scene}
+              onDraft={(scene) => saveDraft(open.card.id, { [SCENE_DRAFT]: JSON.stringify(scene) })}
+              onSubmit={(scene) => submitWork(open.card.id, { scene })}
+            />
+          ) : open.task ? (
+            <div className="grid h-full place-items-center p-8 text-center text-ink-soft">This workspace is on its way. Answer in the chat for now.</div>
+          ) : (
+            <div className="grid h-full place-items-center text-ink-soft" aria-live="polite">
+              Opening the task…
+            </div>
+          )}
+        </WorkspaceShell>
+      )}
 
       <CatalogModal view={catalogOpen ? "all" : null} onClose={() => setCatalogOpen(false)} />
       <Paywall open={paywallOpen} onClose={() => setPaywallOpen(false)} onUpgrade={upgrade} />

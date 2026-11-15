@@ -1,15 +1,15 @@
 @import "tailwindcss";
 
 @theme {
-  --color-ink: #0d0d14;
-  --color-ink-soft: #4a4a5c;
-  --color-hero: #5468ff;
-  --color-hero-deep: #3e4fe6;
-  --color-hero-wash: #eef0ff;
+  --color-ink: #141a27;
+  --color-ink-soft: #586176;
+  --color-hero: #3d5afe;
+  --color-hero-deep: #2843e6;
+  --color-hero-wash: #e8edff;
   --color-paper: #ffffff;
-  --color-mist: #f3f3f8;
-  --color-line: #e2e2ec;
-  --color-sun: #ffd84d;
+  --color-mist: #eef0f4;
+  --color-line: #dce0e7;
+  --color-steel: #a7afbe;
   --color-mint: #12b886;
   --color-mint-wash: #e6f8f1;
   --color-rose: #e8384f;
@@ -33,9 +33,24 @@ body {
 }
 
 :focus-visible {
-  outline: 3px solid var(--color-sun);
+  outline: 3px solid var(--color-hero);
   outline-offset: 2px;
   border-radius: 0.5rem;
+}
+/* On blue and dark surfaces the focus ring turns white, and back to blue on white panels inside them */
+.bg-hero :focus-visible,
+.bg-ink :focus-visible {
+  outline-color: var(--color-paper);
+}
+.bg-paper :focus-visible {
+  outline-color: var(--color-hero);
+}
+.bg-paper .bg-hero :focus-visible {
+  outline-color: var(--color-paper);
+}
+/* Design panel fields draw their own ring around the whole field */
+.field-box :focus-visible {
+  outline: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -94,7 +109,7 @@ body {
   font-size: 1.25rem;
   font-weight: 600;
   letter-spacing: -0.01em;
-  box-shadow: 0 6px 0 rgb(13 13 20 / 0.18);
+  box-shadow: 0 6px 0 rgb(20 26 39 / 0.18);
   transition:
     transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
     box-shadow 0.3s ease,
@@ -105,14 +120,14 @@ body {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(105deg, transparent 35%, rgb(84 104 255 / 0.16) 50%, transparent 65%);
+  background: linear-gradient(105deg, transparent 35%, rgb(61 90 254 / 0.16) 50%, transparent 65%);
   transform: translateX(-120%);
   transition: transform 0.7s ease;
 }
 .dir-pill:hover,
 .dir-pill:focus-visible {
   transform: translateY(-5px);
-  box-shadow: 0 11px 0 rgb(13 13 20 / 0.22);
+  box-shadow: 0 11px 0 rgb(20 26 39 / 0.22);
   padding-right: 16px;
 }
 .dir-pill:hover::after,
@@ -121,7 +136,7 @@ body {
 }
 .dir-pill:active {
   transform: translateY(3px) scale(0.97);
-  box-shadow: 0 2px 0 rgb(13 13 20 / 0.2);
+  box-shadow: 0 2px 0 rgb(20 26 39 / 0.2);
   transition-duration: 0.12s;
 }
 .dir-pill:hover .icon-badge,
@@ -180,7 +195,7 @@ body {
   position: fixed;
   inset: 0;
   z-index: 20;
-  background: rgb(13 13 20 / 0.6);
+  background: rgb(20 26 39 / 0.6);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.35s ease;
@@ -265,6 +280,91 @@ body {
   animation: pop-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.9s both;
 }
 
+/* Task card in the chat: the arrow nudges forward on hover */
+.task-card__arrow {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.task-card__open:hover .task-card__arrow,
+.task-card__open:focus-visible .task-card__arrow {
+  transform: translateX(4px);
+}
+
+/* Full-screen workspace: the frame fades in, the three columns rise in order */
+@keyframes ws-in {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+}
+@keyframes ws-col-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+.ws {
+  animation: ws-in 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.ws-col {
+  animation: ws-col-in 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.ws-col--1 {
+  animation-delay: 0.05s;
+}
+.ws-col--2 {
+  animation-delay: 0.12s;
+}
+.ws-col--3 {
+  animation-delay: 0.19s;
+}
+/* Side panels collapse on desktop so the tool in the middle can take the room.
+   The inner box keeps its width, so content doesn't reflow while it slides. */
+@media (min-width: 1024px) {
+  .ws-side {
+    --w: 0px;
+    width: 0;
+    transition:
+      width 0.45s cubic-bezier(0.2, 0.8, 0.2, 1),
+      margin 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .ws-ticket {
+    --w: 260px;
+    margin-right: -0.5rem;
+  }
+  .ws-chat {
+    --w: 330px;
+    margin-left: -0.5rem;
+  }
+  .ws-side--open {
+    width: var(--w);
+    margin: 0;
+  }
+  .ws-side__inner {
+    width: var(--w);
+  }
+}
+@media (min-width: 1440px) {
+  .ws-ticket {
+    --w: 280px;
+  }
+  .ws-chat {
+    --w: 360px;
+  }
+}
+@media (min-width: 1680px) {
+  .ws-ticket {
+    --w: 320px;
+  }
+  .ws-chat {
+    --w: 400px;
+  }
+}
+
+/* Blinking block cursor while a run or submit is in progress */
+.term-cursor {
+  animation: blink 1s steps(2) infinite;
+}
+
 /* Mentor messages rendered from markdown */
 .prose-chat p {
   margin: 0 0 0.6em;
@@ -277,6 +377,9 @@ body {
   margin: 0.3em 0 0.6em 1.2em;
   list-style: disc;
 }
+.prose-chat ol {
+  list-style: decimal;
+}
 .prose-chat code {
   font-family: var(--font-mono);
   font-size: 0.86em;
@@ -286,7 +389,7 @@ body {
 }
 .prose-chat pre {
   background: var(--color-ink);
-  color: #e9e9f2;
+  color: #e3e7ee;
   padding: 0.9em 1em;
   border-radius: 0.9em;
   overflow-x: auto;
@@ -334,4 +437,72 @@ body {
   40% {
     opacity: 1;
   }
+}
+
+/* Flicky: panel and hint pop in, the cursor flies between targets, the target pulses */
+@keyframes flicky-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.flicky-pop {
+  animation: flicky-pop 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  transform-origin: top right;
+}
+.flicky-cursor {
+  transition: transform 0.75s cubic-bezier(0.22, 0.9, 0.24, 1);
+  will-change: transform;
+}
+@keyframes flicky-ring {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 2px var(--color-hero),
+      0 0 0 6px rgb(61 90 254 / 0.18);
+  }
+  50% {
+    box-shadow:
+      0 0 0 2px var(--color-hero),
+      0 0 0 11px rgb(61 90 254 / 0.08);
+  }
+}
+.flicky-ring {
+  animation: flicky-ring 1.6s ease-in-out infinite;
+  transition:
+    left 0.35s ease,
+    top 0.35s ease,
+    width 0.35s ease,
+    height 0.35s ease;
+}
+@keyframes flicky-live {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(232 56 79 / 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 7px rgb(232 56 79 / 0);
+  }
+}
+.flicky-live {
+  animation: flicky-live 1.2s ease-out infinite;
+}
+@keyframes flicky-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+.flicky-dot {
+  animation: flicky-dot 1s ease-in-out infinite;
 }

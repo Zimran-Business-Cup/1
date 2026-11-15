@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useRef } from "react";
-import { DIRECTIONS, PROFESSIONS, type DirectionId } from "@/lib/catalog";
+import type { DirectionId } from "@/lib/catalog";
+import { VISIBLE_DIRECTIONS, VISIBLE_PROFESSIONS, isRoleOpen, roleName } from "@/lib/features";
 import { RoleIcon } from "./RoleIcon";
 
 export type CatalogView = DirectionId | "all";
@@ -24,8 +25,8 @@ export function CatalogModal({ view, onClose }: { view: CatalogView | null; onCl
     }
   }, [view]);
 
-  const direction = view && view !== "all" ? DIRECTIONS.find((d) => d.id === view) : null;
-  const roles = direction ? PROFESSIONS.filter((p) => p.direction === direction.id) : PROFESSIONS;
+  const direction = view && view !== "all" ? VISIBLE_DIRECTIONS.find((d) => d.id === view) : null;
+  const roles = direction ? VISIBLE_PROFESSIONS.filter((p) => p.direction === direction.id) : VISIBLE_PROFESSIONS;
 
   return (
     <dialog
@@ -54,16 +55,17 @@ export function CatalogModal({ view, onClose }: { view: CatalogView | null; onCl
           </div>
 
           <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {roles.map((p) => (
-              <li key={p.slug}>
-                <Link
-                  href={`/s/${p.slug}`}
-                  onClick={onClose}
-                  className="role-tile flex h-full flex-col rounded-[1.75rem] bg-mist p-6 transition hover:bg-hero-wash focus-visible:bg-hero-wash"
-                >
-                  <RoleIcon slug={p.slug} size={64} />
+            {/* Open roles first, then the ones that are coming soon */}
+            {[...roles].sort((a, b) => Number(isRoleOpen(b.slug)) - Number(isRoleOpen(a.slug))).map((p) => {
+              const open = isRoleOpen(p.slug);
+              const body = (
+                <>
+                  <span className="flex items-start justify-between gap-3">
+                    <RoleIcon slug={p.slug} size={64} />
+                    {!open && <span className="rounded-full bg-paper px-3 py-1.5 text-sm font-semibold text-ink-soft">Coming soon</span>}
+                  </span>
                   <span className="mt-6 text-sm text-ink-soft">Role</span>
-                  <span className="mt-1 text-2xl font-bold leading-tight tracking-[-0.02em]">{p.name}</span>
+                  <span className="mt-1 text-2xl font-bold leading-tight tracking-[-0.02em]">{roleName(p)}</span>
                   <span className="mt-2 text-[15px] leading-snug text-ink-soft">{p.brief.summary}</span>
                   <span className="mt-auto flex flex-wrap gap-2 pt-6 text-sm font-semibold">
                     <span className="rounded-full bg-paper px-3 py-1.5">{p.practice === "written" ? "Written tasks" : p.practice === "python" ? "Python tasks" : "JavaScript tasks"}</span>
@@ -71,9 +73,26 @@ export function CatalogModal({ view, onClose }: { view: CatalogView | null; onCl
                       <span className="rounded-full bg-paper px-3 py-1.5">Median {usd(p.pay.percentiles.median)}/yr</span>
                     )}
                   </span>
-                </Link>
-              </li>
-            ))}
+                </>
+              );
+              return (
+                <li key={p.slug}>
+                  {open ? (
+                    <Link
+                      href={`/s/${p.slug}`}
+                      onClick={onClose}
+                      className="role-tile flex h-full flex-col rounded-[1.75rem] bg-mist p-6 transition hover:bg-hero-wash focus-visible:bg-hero-wash"
+                    >
+                      {body}
+                    </Link>
+                  ) : (
+                    <div aria-disabled="true" className="flex h-full flex-col rounded-[1.75rem] bg-mist p-6 opacity-55">
+                      {body}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { Profession } from "@/lib/catalog";
+import { roleName } from "@/lib/features";
 import { DotGrid } from "../DotGrid";
 import { RoleIcon } from "../RoleIcon";
 
@@ -47,7 +48,7 @@ export function RoleBrief({ profession: p }: { profession: Profession }) {
   const topIndustry = pay ? Math.max(...pay.industries.map((i) => i.median)) : 0;
 
   return (
-    <article className="animate-rise space-y-3" aria-label={`About the ${p.name} role`}>
+    <article className="animate-rise space-y-3" aria-label={`About the ${roleName(p)} role`}>
       {/* The role and its pay: the hero of the card */}
       <section className="relative overflow-hidden rounded-[1.75rem] bg-hero p-6 text-paper sm:p-8">
         <DotGrid subtle />
@@ -56,7 +57,7 @@ export function RoleBrief({ profession: p }: { profession: Profession }) {
             <RoleIcon slug={p.slug} size={44} tone="dark" />
             <span className="text-[15px] font-semibold text-paper/75">The role you&apos;re test-driving</span>
           </div>
-          <h2 className="mt-5 text-[clamp(2.25rem,5vw,3.5rem)] font-bold leading-[0.95] tracking-[-0.05em]">{p.name}</h2>
+          <h2 className="mt-5 text-[clamp(2.25rem,5vw,3.5rem)] font-bold leading-[0.95] tracking-[-0.05em]">{roleName(p)}</h2>
           <p className="mt-3 max-w-xl text-lg leading-relaxed text-paper/80">{p.brief.summary}</p>
 
           {pay && pc?.median != null && low != null && high != null && (
@@ -64,7 +65,7 @@ export function RoleBrief({ profession: p }: { profession: Profession }) {
               <p className="text-[15px] font-semibold text-paper/75">What it pays in the US</p>
               <div className="mt-1 flex flex-wrap items-end gap-x-10 gap-y-4">
                 <p>
-                  <span className="block text-[clamp(3.5rem,8vw,5.5rem)] font-extrabold leading-none tracking-[-0.05em] text-sun">
+                  <span className="block text-[clamp(3.5rem,8vw,5.5rem)] font-extrabold leading-none tracking-[-0.05em] text-paper">
                     ${median.toLocaleString("en-US")}
                   </span>
                   <span className="mt-1 block text-paper/75">a year, typical (median)</span>
@@ -89,7 +90,7 @@ export function RoleBrief({ profession: p }: { profession: Profession }) {
                   />
                 )}
                 <span
-                  className="pop-in absolute top-1/2 size-6 rounded-full border-4 border-hero bg-sun"
+                  className="pop-in absolute top-1/2 size-6 rounded-full border-4 border-hero bg-paper"
                   style={{ left: `${pos(pc.median)}%` }}
                 />
               </div>

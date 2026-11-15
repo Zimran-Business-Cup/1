@@ -40,6 +40,9 @@ self.onmessage = async (event) => {
     let testResult = null;
     if (tests) {
       const saved = output;
+      // Tests can read what the program printed and its code, like in the server sandbox.
+      ns.set("__output__", output);
+      ns.set("__source__", code);
       try {
         await py.runPythonAsync(tests, { globals: ns });
         testResult = { passed: true };
@@ -82,7 +85,8 @@ self.onmessage = (event) => {
   let testResult = null;
   if (tests) {
     try {
-      new Function("console", "assert", code + "\\n" + tests)(quiet, assert);
+      // Tests can read what the program printed and its code, like in the server sandbox.
+      new Function("console", "assert", "__output__", "__source__", code + "\\n" + tests)(quiet, assert, logs.join("\\n"), code);
       testResult = { passed: true };
     } catch (err) {
       testResult = { passed: false, error: err && err.message ? err.message : String(err) };
