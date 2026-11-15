@@ -105,8 +105,16 @@ export interface ParsedAnswer {
   typeRequests: string[];
 }
 
-/** Parses a finished answer. Steps that point at anchors outside `knownAnchors` are dropped. */
-export function parseFlickyAnswer(raw: string, knownAnchors?: ReadonlySet<string>): ParsedAnswer {
+/** A walkthrough longer than this is cut: past five hops the learner stops following. */
+export const MAX_STEPS = 5;
+
+const targetKey = (t: WalkthroughTarget) => (t.kind === "anchor" ? t.anchorId : `${t.x},${t.y}`);
+
+/**
+ * Parses a finished answer. Steps that point at anchors outside `knownAnchors` are dropped,
+ * and so are pixel steps when no screenshot was sent (`pixels: false`): there is nothing to map them to.
+ */
+export function parseFlickyAnswer(raw: string, knownAnchors?: ReadonlySet<string>, { pixels = true }: { pixels?: boolean } = {}): ParsedAnswer {
   const targets: { label: string; target: WalkthroughTarget }[] = [];
   POINT_TAG.lastIndex = 0;
   let m: RegExpExecArray | null;
@@ -115,6 +123,7 @@ export function parseFlickyAnswer(raw: string, knownAnchors?: ReadonlySet<string
       if (knownAnchors && !knownAnchors.has(m[1])) continue;
       targets.push({ label: m[2].trim(), target: { kind: "anchor", anchorId: m[1] } });
     } else {
+      if (!pixels) continue;
       targets.push({
         label: m[5].trim(),
         target: { kind: "point", x: Number(m[3]), y: Number(m[4]), screen: Number(m[6] ?? 0) },
@@ -126,10 +135,12 @@ export function parseFlickyAnswer(raw: string, knownAnchors?: ReadonlySet<string
   TYPE_TAG.lastIndex = 0;
   while ((m = TYPE_TAG.exec(raw)) !== null) typeRequests.push(m[1].replace(/\\(.)/g, "$1"));
 
-  const total = targets.length;
+  // Pointing at the same place twice in a row is one step.
+  const steps = targets.filter((t, i) => i === 0 || targetKey(t.target) !== targetKey(targets[i - 1].target)).slice(0, MAX_STEPS);
+  const total = steps.length;
   return {
     text: stripTags(raw),
-    walkthrough: total ? { steps: targets.map((t, i) => ({ step: i + 1, total, ...t })) } : null,
+    walkthrough: total ? { steps: steps.map((t, i) => ({ step: i + 1, total, ...t })) } : null,
     typeRequests,
   };
 }

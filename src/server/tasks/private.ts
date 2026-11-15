@@ -1,5 +1,7 @@
 // Server-only: hidden tests and reference solutions. Never send these to the browser.
 
+import { LADDER_PRIVATE } from "./ladder-private";
+
 export interface PrivateTask {
   /** test_* functions; the first docstring line is the check label. */
   hiddenTests: string;
@@ -68,5 +70,5 @@ const PRIVATE: Record<string, PrivateTask> = {
 };
 
 export function privateTask(id: string): PrivateTask | null {
-  return PRIVATE[id] ?? null;
+  return PRIVATE[id] ?? LADDER_PRIVATE[id] ?? null;
 }

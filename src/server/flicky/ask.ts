@@ -49,7 +49,7 @@ export function modelAskStream(req: AskRequest, signal: AbortSignal): ReadableSt
           raw += text;
           send({ type: "chunk", text });
         }
-        send({ type: "done", ...parseFlickyAnswer(raw, known) });
+        send({ type: "done", ...parseFlickyAnswer(raw, known, { pixels: !!size }) });
       } catch (error) {
         if (signal.aborted) return controller.close();
         console.error("[flicky] ask failed:", error instanceof Error ? error.message : error);
